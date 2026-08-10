@@ -22,7 +22,9 @@ public static class QuoteEndpointExtensions
             size = size is < 1 or > 100 ? 10 : size;
 
             var quotes = await repository.GetPagedAsync(
-                page, size, cancellationToken);
+                page,
+                size,
+                cancellationToken);
 
             return Results.Ok(quotes);
         });
@@ -33,7 +35,8 @@ public static class QuoteEndpointExtensions
             CancellationToken cancellationToken) =>
         {
             var quote = await repository.GetByIdAsync(
-                id, cancellationToken);
+                id,
+                cancellationToken);
 
             return quote is null
                 ? Results.NotFound()
@@ -56,11 +59,14 @@ public static class QuoteEndpointExtensions
                     true))
             {
                 var errors = validationResults
-                    .GroupBy(x => x.MemberNames.FirstOrDefault() ?? "request")
+                    .GroupBy(
+                        x => x.MemberNames.FirstOrDefault()
+                             ?? "request")
                     .ToDictionary(
                         g => g.Key,
                         g => g.Select(
-                            x => x.ErrorMessage ?? "Invalid value").ToArray());
+                            x => x.ErrorMessage
+                                ?? "Invalid value").ToArray());
 
                 return Results.ValidationProblem(errors);
             }
@@ -72,7 +78,8 @@ public static class QuoteEndpointExtensions
             };
 
             var created = await repository.AddAsync(
-                quote, cancellationToken);
+                quote,
+                cancellationToken);
 
             var logger = loggerFactory.CreateLogger(
                 "QuotesApi.QuoteEndpoints");
@@ -94,7 +101,8 @@ public static class QuoteEndpointExtensions
             CancellationToken cancellationToken) =>
         {
             var deleted = await repository.DeleteAsync(
-                id, cancellationToken);
+                id,
+                cancellationToken);
 
             if (!deleted)
                 return Results.NotFound();
@@ -108,6 +116,119 @@ public static class QuoteEndpointExtensions
 
             return Results.NoContent();
         });
+
+        // Collection endpoints
+
+        var collections = app.MapGroup("/api/collections");
+
+        collections.MapPost("/", async (
+            CreateCollectionRequest request,
+            ICollectionRepository repository,
+            CancellationToken cancellationToken) =>
+        {
+            var validationContext =
+                new ValidationContext(request);
+
+            var validationResults =
+                new List<ValidationResult>();
+
+            if (!Validator.TryValidateObject(
+                    request,
+                    validationContext,
+                    validationResults,
+                    true))
+            {
+                var errors = validationResults
+                    .GroupBy(
+                        x => x.MemberNames.FirstOrDefault()
+                             ?? "request")
+                    .ToDictionary(
+                        g => g.Key,
+                        g => g.Select(
+                            x => x.ErrorMessage
+                                ?? "Invalid value").ToArray());
+
+                return Results.ValidationProblem(errors);
+            }
+
+            var collection = new Collection(
+                request.Name,
+                request.OwnerId);
+
+            var created = await repository.Add(
+                collection,
+                cancellationToken);
+
+            return Results.Created(
+                $"/api/collections/{created.Id}",
+                created);
+        });
+
+        collections.MapPost(
+            "/{id:int}/items",
+            async (
+                int id,
+                int quoteId,
+                ICollectionRepository collectionRepository,
+                IQuoteRepository quoteRepository,
+                CancellationToken cancellationToken) =>
+            {
+                var collection =
+                    await collectionRepository.GetById(
+                        id,
+                        cancellationToken);
+
+                if (collection is null)
+                {
+                    return Results.NotFound();
+                }
+
+                var quote =
+                    await quoteRepository.GetByIdAsync(
+                        quoteId,
+                        cancellationToken);
+
+                if (quote is null)
+                {
+                    return Results.NotFound();
+                }
+
+                // Aggregate root enforces all invariants.
+                collection.AddItem(quoteId);
+
+                await collectionRepository.Update(
+                    collection,
+                    cancellationToken);
+
+                return Results.NoContent();
+            });
+
+        collections.MapDelete(
+            "/{id:int}/items/{quoteId:int}",
+            async (
+                int id,
+                int quoteId,
+                ICollectionRepository repository,
+                CancellationToken cancellationToken) =>
+            {
+                var collection =
+                    await repository.GetById(
+                        id,
+                        cancellationToken);
+
+                if (collection is null)
+                {
+                    return Results.NotFound();
+                }
+
+                collection.RemoveItem(quoteId);
+
+                await repository.Update(
+                    collection,
+                    cancellationToken);
+
+                return Results.NoContent();
+            });
 
         return app;
     }

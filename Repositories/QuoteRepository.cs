@@ -25,7 +25,9 @@ public class QuoteRepository(QuoteDbContext db) : IQuoteRepository
     {
         return await db.Quotes
             .AsNoTracking()
-            .FirstOrDefaultAsync(q => q.Id == id, cancellationToken);
+            .FirstOrDefaultAsync(
+                q => q.Id == id,
+                cancellationToken);
     }
 
     public async Task<Quote> AddAsync(
@@ -33,7 +35,9 @@ public class QuoteRepository(QuoteDbContext db) : IQuoteRepository
         CancellationToken cancellationToken)
     {
         db.Quotes.Add(quote);
+
         await db.SaveChangesAsync(cancellationToken);
+
         return quote;
     }
 
@@ -42,13 +46,19 @@ public class QuoteRepository(QuoteDbContext db) : IQuoteRepository
         CancellationToken cancellationToken)
     {
         var quote = await db.Quotes
-            .FirstOrDefaultAsync(q => q.Id == id, cancellationToken);
+            .FirstOrDefaultAsync(
+                q => q.Id == id,
+                cancellationToken);
 
         if (quote is null)
+        {
             return false;
+        }
 
         db.Quotes.Remove(quote);
+
         await db.SaveChangesAsync(cancellationToken);
+
         return true;
     }
 }
