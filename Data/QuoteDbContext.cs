@@ -10,13 +10,54 @@ public class QuoteDbContext(DbContextOptions<QuoteDbContext> options)
 
     public DbSet<Collection> Collections =>
         Set<Collection>();
-    
-    public DbSet<User> Users => Set<User>();
+
+    public DbSet<User> Users =>
+        Set<User>();
+
+    public DbSet<RefreshToken> RefreshTokens =>
+        Set<RefreshToken>();
 
     protected override void OnModelCreating(
         ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+
+        modelBuilder.Entity<User>(entity =>
+        {
+            entity.HasKey(u => u.Id);
+
+            entity.Property(u => u.Email)
+                .IsRequired();
+
+            entity.HasIndex(u => u.Email)
+                .IsUnique();
+
+            entity.Property(u => u.PasswordHash)
+                .IsRequired();
+        });
+
+        modelBuilder.Entity<RefreshToken>(entity =>
+        {
+            entity.HasKey(t => t.Id);
+
+            entity.Property(t => t.Token)
+                .IsRequired();
+
+            entity.HasIndex(t => t.Token)
+                .IsUnique();
+
+            entity.Property(t => t.ExpiresAt)
+                .IsRequired();
+
+            entity.Property(t => t.RevokedAt);
+
+            entity.Property(t => t.ReplacedByToken);
+
+            entity.HasOne(t => t.User)
+                .WithMany()
+                .HasForeignKey(t => t.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
 
         modelBuilder.Entity<Collection>(entity =>
         {
