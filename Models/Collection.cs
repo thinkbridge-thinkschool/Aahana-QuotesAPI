@@ -46,15 +46,18 @@ public class Collection
     }
 
     public void RemoveItem(int quoteId)
-    {
-        var item = _items.FirstOrDefault(
-            x => x.QuoteId == quoteId);
+{
+    var item = _items.FirstOrDefault(
+        x => x.QuoteId == quoteId);
 
-        if (item is not null)
-        {
-            _items.Remove(item);
-        }
+    if (item is null)
+    {
+        throw new DomainInvariantException(
+            $"Quote {quoteId} is not in this collection.");
     }
+
+    _items.Remove(item);
+}
 
     private static void ValidateName(string name)
     {
