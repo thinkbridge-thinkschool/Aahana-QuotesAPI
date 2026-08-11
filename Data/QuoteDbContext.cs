@@ -10,6 +10,8 @@ public class QuoteDbContext(DbContextOptions<QuoteDbContext> options)
 
     public DbSet<Collection> Collections =>
         Set<Collection>();
+    
+    public DbSet<User> Users => Set<User>();
 
     protected override void OnModelCreating(
         ModelBuilder modelBuilder)

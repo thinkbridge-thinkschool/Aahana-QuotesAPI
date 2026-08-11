@@ -1,9 +1,9 @@
 using System.ComponentModel.DataAnnotations;
 using QuotesApi.Abstractions;
 using QuotesApi.Dtos;
+using QuotesApi.Exceptions;
 using QuotesApi.Models;
 using QuotesApi.Repositories;
-using QuotesApi.Exceptions;
 
 namespace QuotesApi.Extensions;
 
@@ -75,20 +75,21 @@ public static class QuoteEndpointExtensions
 
             Quote quote;
 
-try
-{
-    quote = Quote.Create(
-        request.Author,
-        request.Text);
-}
-catch (DomainInvariantException ex)
-{
-    return Results.ValidationProblem(
-        new Dictionary<string, string[]>
-        {
-            ["quote"] = [ex.Message]
-        });
-}
+            try
+            {
+                quote = Quote.Create(
+                    request.Author,
+                    request.Text);
+            }
+            catch (DomainInvariantException ex)
+            {
+                return Results.ValidationProblem(
+                    new Dictionary<string, string[]>
+                    {
+                        ["quote"] = [ex.Message]
+                    });
+            }
+
             var created = await repository.AddAsync(
                 quote,
                 cancellationToken);
@@ -104,7 +105,8 @@ catch (DomainInvariantException ex)
             return Results.Created(
                 $"/api/quotes/{created.Id}",
                 created);
-        });
+        })
+        .RequireAuthorization();
 
         group.MapDelete("/{id:int}", async (
             int id,
@@ -117,7 +119,9 @@ catch (DomainInvariantException ex)
                 cancellationToken);
 
             if (!deleted)
+            {
                 return Results.NotFound();
+            }
 
             var logger = loggerFactory.CreateLogger(
                 "QuotesApi.QuoteEndpoints");
@@ -127,7 +131,8 @@ catch (DomainInvariantException ex)
                 id);
 
             return Results.NoContent();
-        });
+        })
+        .RequireAuthorization();
 
         // Collection endpoints
 
@@ -206,7 +211,6 @@ catch (DomainInvariantException ex)
                     return Results.NotFound();
                 }
 
-                // Aggregate root enforces all invariants.
                 collection.AddItem(
                     quoteId,
                     clock.UtcNow.UtcDateTime);
