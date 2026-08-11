@@ -1,5 +1,7 @@
 using Microsoft.EntityFrameworkCore;
+using QuotesApi.Abstractions;
 using QuotesApi.Data;
+using QuotesApi.Infrastructure;
 using QuotesApi.Repositories;
 
 namespace QuotesApi.Extensions;
@@ -22,6 +24,9 @@ public static class InfrastructureExtensions
         services.AddScoped<
             ICollectionRepository,
             CollectionRepository>();
+
+        services.AddSingleton<IClock, SystemClock>();
+        services.AddTransient<IQuoteFormatter, QuoteFormatter>();
 
         return services;
     }

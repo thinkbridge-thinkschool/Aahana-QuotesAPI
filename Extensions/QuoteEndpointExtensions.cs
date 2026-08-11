@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using QuotesApi.Abstractions;
 using QuotesApi.Dtos;
 using QuotesApi.Models;
 using QuotesApi.Repositories;
@@ -171,6 +172,7 @@ public static class QuoteEndpointExtensions
                 int quoteId,
                 ICollectionRepository collectionRepository,
                 IQuoteRepository quoteRepository,
+                IClock clock,
                 CancellationToken cancellationToken) =>
             {
                 var collection =
@@ -194,7 +196,9 @@ public static class QuoteEndpointExtensions
                 }
 
                 // Aggregate root enforces all invariants.
-                collection.AddItem(quoteId);
+                collection.AddItem(
+                    quoteId,
+                    clock.UtcNow.UtcDateTime);
 
                 await collectionRepository.Update(
                     collection,

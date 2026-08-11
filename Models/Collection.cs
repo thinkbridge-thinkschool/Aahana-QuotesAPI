@@ -10,13 +10,11 @@ public class Collection
     {
     }
 
-    public Collection(
-        string name,
-        int ownerId)
+    public Collection(string name, int ownerId)
     {
         ValidateName(name);
 
-        Name = name;
+        Name = name.Trim();
         OwnerId = ownerId;
     }
 
@@ -28,7 +26,7 @@ public class Collection
 
     public IReadOnlyCollection<CollectionItem> Items => _items.AsReadOnly();
 
-    public void AddItem(int quoteId)
+    public void AddItem(int quoteId, DateTime addedAt)
     {
         if (_items.Count >= 50)
         {
@@ -36,16 +34,15 @@ public class Collection
                 "A collection cannot contain more than 50 items.");
         }
 
-        if (_items.Any(x => x.QuoteId == quoteId))
+        if (_items.Any(item => item.QuoteId == quoteId))
         {
             throw new DomainInvariantException(
                 $"Quote {quoteId} is already in this collection.");
         }
 
-        _items.Add(
-            new CollectionItem(
-                quoteId,
-                DateTime.UtcNow));
+        _items.Add(new CollectionItem(
+            quoteId,
+            addedAt));
     }
 
     public void RemoveItem(int quoteId)
