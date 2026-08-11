@@ -5,7 +5,7 @@ namespace QuotesApi.Dtos;
 public class CreateQuoteRequest
 {
     [Required]
-    [StringLength(100, MinimumLength = 1)]
+    [StringLength(200, MinimumLength = 1)]
     public string Author { get; set; } = string.Empty;
 
     [Required]

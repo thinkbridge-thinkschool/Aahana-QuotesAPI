@@ -18,5 +18,8 @@
   <ItemGroup>
     <Compile Remove="QuotesApi.Tests\**" />
   </ItemGroup>
+  <ItemGroup>
+  <Compile Remove="Tests.Domain/**/*.cs" />
+</ItemGroup>
 
 </Project>

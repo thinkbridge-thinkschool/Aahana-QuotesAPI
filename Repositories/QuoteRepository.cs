@@ -13,6 +13,7 @@ public class QuoteRepository(QuoteDbContext db) : IQuoteRepository
     {
         return await db.Quotes
             .AsNoTracking()
+            .Where(q => !q.IsDeleted)
             .OrderBy(q => q.Id)
             .Skip((page - 1) * size)
             .Take(size)
@@ -24,10 +25,11 @@ public class QuoteRepository(QuoteDbContext db) : IQuoteRepository
         CancellationToken cancellationToken)
     {
         return await db.Quotes
-            .AsNoTracking()
-            .FirstOrDefaultAsync(
-                q => q.Id == id,
-                cancellationToken);
+        .AsNoTracking()
+        .Where(q => !q.IsDeleted)
+        .FirstOrDefaultAsync(
+        q => q.Id == id,
+        cancellationToken);
     }
 
     public async Task<Quote> AddAsync(
@@ -42,23 +44,23 @@ public class QuoteRepository(QuoteDbContext db) : IQuoteRepository
     }
 
     public async Task<bool> DeleteAsync(
-        int id,
-        CancellationToken cancellationToken)
+    int id,
+    CancellationToken cancellationToken)
+{
+    var quote = await db.Quotes
+        .FirstOrDefaultAsync(
+            q => q.Id == id,
+            cancellationToken);
+
+    if (quote is null)
     {
-        var quote = await db.Quotes
-            .FirstOrDefaultAsync(
-                q => q.Id == id,
-                cancellationToken);
-
-        if (quote is null)
-        {
-            return false;
-        }
-
-        db.Quotes.Remove(quote);
-
-        await db.SaveChangesAsync(cancellationToken);
-
-        return true;
+        return false;
     }
+
+    quote.SoftDelete();
+
+    await db.SaveChangesAsync(cancellationToken);
+
+    return true;
+}
 }

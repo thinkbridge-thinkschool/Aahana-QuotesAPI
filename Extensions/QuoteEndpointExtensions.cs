@@ -3,6 +3,7 @@ using QuotesApi.Abstractions;
 using QuotesApi.Dtos;
 using QuotesApi.Models;
 using QuotesApi.Repositories;
+using QuotesApi.Exceptions;
 
 namespace QuotesApi.Extensions;
 
@@ -72,12 +73,22 @@ public static class QuoteEndpointExtensions
                 return Results.ValidationProblem(errors);
             }
 
-            var quote = new Quote
-            {
-                Author = request.Author,
-                Text = request.Text
-            };
+            Quote quote;
 
+try
+{
+    quote = Quote.Create(
+        request.Author,
+        request.Text);
+}
+catch (DomainInvariantException ex)
+{
+    return Results.ValidationProblem(
+        new Dictionary<string, string[]>
+        {
+            ["quote"] = [ex.Message]
+        });
+}
             var created = await repository.AddAsync(
                 quote,
                 cancellationToken);
