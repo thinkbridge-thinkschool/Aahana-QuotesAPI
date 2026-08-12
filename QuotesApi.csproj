@@ -19,10 +19,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Remove="QuotesApi.Tests\**" />
-  </ItemGroup>
-  <ItemGroup>
-  <Compile Remove="Tests.Domain/**/*.cs" />
+  <Compile Remove="QuotesApi.Tests\**" />
+  <Compile Remove="Tests.Domain\**" />
+  <Compile Remove="Quotes.Tests.Integration\**" />
 </ItemGroup>
 
 </Project>
