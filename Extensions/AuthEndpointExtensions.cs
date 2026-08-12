@@ -6,6 +6,7 @@ using Microsoft.IdentityModel.Tokens;
 using QuotesApi.Data;
 using QuotesApi.Dtos;
 using QuotesApi.Models;
+using QuotesApi.Services;
 
 namespace QuotesApi.Extensions;
 
@@ -71,27 +72,29 @@ public static class AuthEndpointExtensions
                 RefreshRequest request,
                 QuoteDbContext db,
                 IConfiguration configuration,
+                RefreshTokenService refreshTokenService,
                 CancellationToken cancellationToken) =>
             {
                 var tokenHash = HashToken(
                     request.RefreshToken);
 
-                var refreshToken = await db.RefreshTokens
-                    .Include(t => t.User)
-                    .FirstOrDefaultAsync(
-                        t => t.Token == tokenHash,
-                        cancellationToken);
+                var refreshToken =
+                    await db.RefreshTokens
+                        .Include(t => t.User)
+                        .FirstOrDefaultAsync(
+                            t => t.Token == tokenHash,
+                            cancellationToken);
 
                 if (refreshToken is null)
                 {
                     return Results.Unauthorized();
                 }
 
+                // Reuse detection
                 if (refreshToken.RevokedAt is not null)
                 {
-                    await RevokeTokenFamily(
+                    await refreshTokenService.RevokeTokenFamily(
                         refreshToken,
-                        db,
                         cancellationToken);
 
                     return Results.Unauthorized();
@@ -239,45 +242,5 @@ public static class AuthEndpointExtensions
             Encoding.UTF8.GetBytes(token));
 
         return Convert.ToHexString(hash);
-    }
-
-    private static async Task RevokeTokenFamily(
-        RefreshToken token,
-        QuoteDbContext db,
-        CancellationToken cancellationToken)
-    {
-        var current = token;
-
-        while (current is not null)
-        {
-            if (current.RevokedAt is null)
-            {
-                current.RevokedAt =
-                    DateTime.UtcNow;
-            }
-
-            if (string.IsNullOrWhiteSpace(
-                    current.ReplacedByToken))
-            {
-                break;
-            }
-
-            var next =
-                await db.RefreshTokens
-                    .FirstOrDefaultAsync(
-                        t => t.Token ==
-                             current.ReplacedByToken,
-                        cancellationToken);
-
-            if (next is null)
-            {
-                break;
-            }
-
-            current = next;
-        }
-
-        await db.SaveChangesAsync(
-            cancellationToken);
     }
 }

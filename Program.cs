@@ -1,7 +1,5 @@
 using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
 using System.Text;
-using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
@@ -10,11 +8,18 @@ using QuotesApi.Authorization;
 using QuotesApi.Data;
 using QuotesApi.Extensions;
 using QuotesApi.Middleware;
+using QuotesApi.Services;
+using QuotesApi.Abstractions;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddProblemDetails();
-builder.Services.AddInfrastructure(builder.Configuration);
+
+builder.Services.AddInfrastructure(
+    builder.Configuration);
+
+builder.Services.AddScoped<RefreshTokenService>();
+builder.Services.AddSingleton<IClock, SystemClock>();
 
 var jwtKey = builder.Configuration["Jwt:Key"]
     ?? throw new InvalidOperationException(
@@ -62,18 +67,21 @@ builder.Services
                     return "InternalJwt";
                 }
 
-                var token = authorization["Bearer ".Length..].Trim();
+                var token =
+                    authorization["Bearer ".Length..].Trim();
 
                 try
                 {
-                    var handler = new JwtSecurityTokenHandler();
+                    var handler =
+                        new JwtSecurityTokenHandler();
 
                     if (!handler.CanReadToken(token))
                     {
                         return "InternalJwt";
                     }
 
-                    var jwt = handler.ReadJwtToken(token);
+                    var jwt =
+                        handler.ReadJwtToken(token);
 
                     var issuer = jwt.Issuer;
 
@@ -119,7 +127,8 @@ builder.Services
         "EntraJwt",
         options =>
         {
-            options.Authority = entraAuthority;
+            options.Authority =
+                entraAuthority;
 
             options.TokenValidationParameters =
                 new TokenValidationParameters
