@@ -1,0 +1,33 @@
+name: Integration Tests
+
+on:
+  push:
+    branches:
+      - main
+      - quote-rich-domain
+
+  pull_request:
+
+jobs:
+  integration-tests:
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --no-restore
+
+      - name: Run integration tests
+        run: dotnet test ./Quotes.Tests.Integration/Quotes.Tests.Integration.csproj --no-build

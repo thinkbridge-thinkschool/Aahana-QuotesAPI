@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -10,16 +9,24 @@ using Microsoft.IdentityModel.Tokens;
 using QuotesApi.Abstractions;
 using QuotesApi.Data;
 using System.Text;
+using Testcontainers.MsSql;
 
 namespace Quotes.Tests.Integration;
 
 public class CustomWebApplicationFactory
     : WebApplicationFactory<Program>
 {
-    private SqliteConnection? _connection;
+    private readonly MsSqlContainer _sqlServer;
 
     public const string TestJwtKey =
         "THIS_IS_A_TEST_JWT_KEY_12345678901234567890";
+
+    public CustomWebApplicationFactory()
+    {
+        _sqlServer = new MsSqlBuilder(
+        "mcr.microsoft.com/mssql/server:2022-latest")
+    .Build();
+    }
 
     protected override void ConfigureWebHost(
         IWebHostBuilder builder)
@@ -45,29 +52,21 @@ public class CustomWebApplicationFactory
         builder.ConfigureServices(
             services =>
             {
-                // Replace production database
                 services.RemoveAll<
                     DbContextOptions<QuoteDbContext>>();
 
                 services.RemoveAll<QuoteDbContext>();
 
-                _connection =
-                    new SqliteConnection(
-                        "Data Source=:memory:");
-
-                _connection.Open();
-
                 services.AddDbContext<QuoteDbContext>(
                     options =>
-                        options.UseSqlite(_connection));
+                        options.UseSqlServer(
+                            _sqlServer.GetConnectionString()));
 
-                // Replace production clock
                 services.RemoveAll<IClock>();
 
                 services.AddSingleton<IClock>(
                     new FakeClock());
 
-                // Configure the real InternalJwt handler
                 services.PostConfigure<JwtBearerOptions>(
                     "InternalJwt",
                     options =>
@@ -96,10 +95,25 @@ public class CustomWebApplicationFactory
 
                                 ValidateLifetime = true,
 
-                                ClockSkew = TimeSpan.Zero
+                                ClockSkew =
+                                    TimeSpan.Zero
                             };
                     });
             });
+    }
+
+    public async Task StartDatabaseAsync()
+    {
+        await _sqlServer.StartAsync();
+
+        using var scope =
+            Services.CreateScope();
+
+        var db =
+            scope.ServiceProvider
+                .GetRequiredService<QuoteDbContext>();
+
+        await db.Database.MigrateAsync();
     }
 
     protected override void Dispose(
@@ -107,7 +121,10 @@ public class CustomWebApplicationFactory
     {
         if (disposing)
         {
-            _connection?.Dispose();
+            _sqlServer.DisposeAsync()
+                .AsTask()
+                .GetAwaiter()
+                .GetResult();
         }
 
         base.Dispose(disposing);

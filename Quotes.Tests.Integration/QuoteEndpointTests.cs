@@ -4,12 +4,9 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using FluentAssertions;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
-using QuotesApi.Data;
-using QuotesApi.Models;
-using Xunit;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.IdentityModel.Tokens;
+using Xunit;
 
 namespace Quotes.Tests.Integration;
 
@@ -22,12 +19,15 @@ public class QuoteEndpointTests
         await using var factory =
             new CustomWebApplicationFactory();
 
+        await factory.StartDatabaseAsync();
+
         using var client =
             factory.CreateClient();
 
         // Act
         var response =
-            await client.GetAsync("/api/quotes/99999");
+            await client.GetAsync(
+                "/api/quotes/99999");
 
         // Assert
         response.StatusCode
@@ -42,27 +42,13 @@ public class QuoteEndpointTests
         await using var factory =
             new CustomWebApplicationFactory();
 
+        await factory.StartDatabaseAsync();
+
         using var client =
             factory.CreateClient();
 
-        // Seed the user required by the Quote foreign key
-        using (var scope = factory.Services.CreateScope())
-        {
-            var db =
-                scope.ServiceProvider
-                    .GetRequiredService<QuoteDbContext>();
-
-            db.Users.Add(new User
-            {
-                Id = 1,
-                Email = "integration@test.com",
-                PasswordHash = "test-hash"
-            });
-
-            await db.SaveChangesAsync();
-        }
-
-        var token = CreateToken();
+        var token =
+            CreateToken();
 
         client.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue(
