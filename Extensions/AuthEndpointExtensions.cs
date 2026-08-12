@@ -1,5 +1,4 @@
 using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
@@ -51,7 +50,8 @@ public static class AuthEndpointExtensions
                     ExpiresAt = DateTime.UtcNow.AddDays(7)
                 };
 
-                db.RefreshTokens.Add(refreshTokenEntity);
+                db.RefreshTokens.Add(
+                    refreshTokenEntity);
 
                 await db.SaveChangesAsync(
                     cancellationToken);
@@ -87,7 +87,6 @@ public static class AuthEndpointExtensions
                     return Results.Unauthorized();
                 }
 
-                // Reuse detection
                 if (refreshToken.RevokedAt is not null)
                 {
                     await RevokeTokenFamily(
@@ -197,13 +196,17 @@ public static class AuthEndpointExtensions
 
         var claims = new[]
         {
-            new Claim(
+            new System.Security.Claims.Claim(
                 JwtRegisteredClaimNames.Sub,
                 user.Id.ToString()),
 
-            new Claim(
+            new System.Security.Claims.Claim(
                 JwtRegisteredClaimNames.Email,
-                user.Email)
+                user.Email),
+
+            new System.Security.Claims.Claim(
+                "scope",
+                "quotes.write")
         };
 
         var credentials =

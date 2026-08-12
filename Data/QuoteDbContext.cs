@@ -21,6 +21,24 @@ public class QuoteDbContext(DbContextOptions<QuoteDbContext> options)
         ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+        modelBuilder.Entity<Quote>(entity =>
+{
+    entity.HasKey(q => q.Id);
+
+    entity.Property(q => q.UserId)
+        .IsRequired();
+
+    entity.Property(q => q.Author)
+        .IsRequired();
+
+    entity.Property(q => q.Text)
+        .IsRequired();
+
+    entity.HasOne<User>()
+        .WithMany()
+        .HasForeignKey(q => q.UserId)
+        .OnDelete(DeleteBehavior.Cascade);
+});
 
         modelBuilder.Entity<User>(entity =>
         {

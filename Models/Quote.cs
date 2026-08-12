@@ -8,13 +8,19 @@ public class Quote
     {
     }
 
-    private Quote(string author, string text)
+    private Quote(
+        int userId,
+        string author,
+        string text)
     {
+        UserId = userId;
         Author = author;
         Text = text;
     }
 
     public int Id { get; private set; }
+
+    public int UserId { get; private set; }
 
     public string Author { get; private set; } = string.Empty;
 
@@ -22,12 +28,16 @@ public class Quote
 
     public bool IsDeleted { get; private set; }
 
-    public static Quote Create(string author, string text)
+    public static Quote Create(
+        int userId,
+        string author,
+        string text)
     {
         ValidateAuthor(author);
         ValidateText(text);
 
         return new Quote(
+            userId,
             author.Trim(),
             text.Trim());
     }

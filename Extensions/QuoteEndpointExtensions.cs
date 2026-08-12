@@ -1,9 +1,13 @@
 using System.ComponentModel.DataAnnotations;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 using QuotesApi.Abstractions;
 using QuotesApi.Dtos;
 using QuotesApi.Exceptions;
 using QuotesApi.Models;
 using QuotesApi.Repositories;
+using QuotesApi.Authorization;
+using Microsoft.AspNetCore.Authorization;
 
 namespace QuotesApi.Extensions;
 
@@ -47,12 +51,24 @@ public static class QuoteEndpointExtensions
 
         group.MapPost("/", async (
             CreateQuoteRequest request,
+            ClaimsPrincipal user,
             IQuoteRepository repository,
             ILoggerFactory loggerFactory,
             CancellationToken cancellationToken) =>
         {
-            var validationContext = new ValidationContext(request);
-            var validationResults = new List<ValidationResult>();
+            var userIdClaim = user.FindFirst(
+                JwtRegisteredClaimNames.Sub)?.Value;
+
+            if (!int.TryParse(userIdClaim, out var userId))
+            {
+                return Results.Unauthorized();
+            }
+
+            var validationContext =
+                new ValidationContext(request);
+
+            var validationResults =
+                new List<ValidationResult>();
 
             if (!Validator.TryValidateObject(
                     request,
@@ -78,6 +94,7 @@ public static class QuoteEndpointExtensions
             try
             {
                 quote = Quote.Create(
+                    userId,
                     request.Author,
                     request.Text);
             }
@@ -98,15 +115,16 @@ public static class QuoteEndpointExtensions
                 "QuotesApi.QuoteEndpoints");
 
             logger.LogInformation(
-                "Created quote {QuoteId} by {Author}",
+                "Created quote {QuoteId} by {Author} for user {UserId}",
                 created.Id,
-                created.Author);
+                created.Author,
+                userId);
 
             return Results.Created(
                 $"/api/quotes/{created.Id}",
                 created);
         })
-        .RequireAuthorization();
+        .RequireAuthorization("can-edit-quotes");
 
         group.MapDelete("/{id:int}", async (
             int id,

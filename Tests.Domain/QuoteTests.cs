@@ -9,7 +9,10 @@ public class QuoteTests
     [Fact]
     public void Create_with_empty_author_throws()
     {
-        var act = () => Quote.Create("", "Valid quote");
+        var act = () => Quote.Create(
+            1,
+            "",
+            "Valid quote");
 
         act.Should()
             .Throw<DomainInvariantException>();
@@ -20,7 +23,10 @@ public class QuoteTests
     {
         var author = new string('A', 201);
 
-        var act = () => Quote.Create(author, "Valid quote");
+        var act = () => Quote.Create(
+            1,
+            author,
+            "Valid quote");
 
         act.Should()
             .Throw<DomainInvariantException>();
@@ -29,7 +35,10 @@ public class QuoteTests
     [Fact]
     public void Create_with_empty_text_throws()
     {
-        var act = () => Quote.Create("Author", "");
+        var act = () => Quote.Create(
+            1,
+            "Author",
+            "");
 
         act.Should()
             .Throw<DomainInvariantException>();
@@ -40,7 +49,10 @@ public class QuoteTests
     {
         var text = new string('A', 1001);
 
-        var act = () => Quote.Create("Author", text);
+        var act = () => Quote.Create(
+            1,
+            "Author",
+            text);
 
         act.Should()
             .Throw<DomainInvariantException>();
@@ -49,8 +61,12 @@ public class QuoteTests
     [Fact]
     public void Create_returns_valid_quote()
     {
-        var quote = Quote.Create("Author", "A valid quote");
+        var quote = Quote.Create(
+            1,
+            "Author",
+            "A valid quote");
 
+        quote.UserId.Should().Be(1);
         quote.Author.Should().Be("Author");
         quote.Text.Should().Be("A valid quote");
         quote.IsDeleted.Should().BeFalse();
@@ -59,7 +75,10 @@ public class QuoteTests
     [Fact]
     public void SoftDelete_marks_quote_as_deleted()
     {
-        var quote = Quote.Create("Author", "A valid quote");
+        var quote = Quote.Create(
+            1,
+            "Author",
+            "A valid quote");
 
         quote.SoftDelete();
 
