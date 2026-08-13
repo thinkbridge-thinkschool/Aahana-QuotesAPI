@@ -1,0 +1,92 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - '**'
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --no-restore
+
+      - name: Test
+        run: >
+          dotnet test --no-build
+          --logger "trx;LogFileName=test-results.trx"
+          --collect:"XPlat Code Coverage"
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: '**/TestResults/**/*.trx'
+          if-no-files-found: warn
+
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: '**/TestResults/**/coverage.cobertura.xml'
+          if-no-files-found: warn
+
+      - name: Check coverage
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import glob
+          import sys
+          import xml.etree.ElementTree as ET
+
+          files = glob.glob("**/TestResults/**/coverage.cobertura.xml", recursive=True)
+
+          if not files:
+              print("No coverage file found.")
+              sys.exit(1)
+
+          total_rate = 0.0
+          total_valid = 0
+          total_covered = 0
+
+          for file in files:
+              root = ET.parse(file).getroot()
+              valid = int(root.attrib.get("lines-valid", 0))
+              covered = int(root.attrib.get("lines-covered", 0))
+
+              total_valid += valid
+              total_covered += covered
+
+          if total_valid == 0:
+              print("Coverage contains no executable lines.")
+              sys.exit(1)
+
+          coverage = (total_covered / total_valid) * 100
+
+          print(f"Total line coverage: {coverage:.2f}%")
+          print("Required minimum: 70%")
+
+          if coverage < 70:
+              print("Coverage is below 70%.")
+              sys.exit(1)
+
+          print("Coverage requirement passed.")
+          PY
