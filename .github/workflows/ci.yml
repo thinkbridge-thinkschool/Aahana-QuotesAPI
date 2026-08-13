@@ -27,10 +27,25 @@ jobs:
       - name: Build
         run: dotnet build --no-restore
 
-      - name: Test
+      - name: Test Domain
         run: >
-          dotnet test --no-build
-          --logger "trx;LogFileName=test-results.trx"
+          dotnet test ./Tests.Domain/Tests.Domain.csproj
+          --no-build
+          --logger "trx;LogFileName=domain-tests.trx"
+          --collect:"XPlat Code Coverage"
+
+      - name: Test API
+        run: >
+          dotnet test ./QuotesApi.Tests/QuotesApi.Tests.csproj
+          --no-build
+          --logger "trx;LogFileName=api-tests.trx"
+          --collect:"XPlat Code Coverage"
+
+      - name: Test Integration
+        run: >
+          dotnet test ./Quotes.Tests.Integration/Quotes.Tests.Integration.csproj
+          --no-build
+          --logger "trx;LogFileName=integration-tests.trx"
           --collect:"XPlat Code Coverage"
 
       - name: Upload test results
@@ -57,20 +72,28 @@ jobs:
           import sys
           import xml.etree.ElementTree as ET
 
-          files = glob.glob("**/TestResults/**/coverage.cobertura.xml", recursive=True)
+          files = glob.glob(
+              "**/TestResults/**/coverage.cobertura.xml",
+              recursive=True
+          )
 
           if not files:
               print("No coverage file found.")
               sys.exit(1)
 
-          total_rate = 0.0
           total_valid = 0
           total_covered = 0
 
           for file in files:
               root = ET.parse(file).getroot()
-              valid = int(root.attrib.get("lines-valid", 0))
-              covered = int(root.attrib.get("lines-covered", 0))
+
+              valid = int(
+                  root.attrib.get("lines-valid", 0)
+              )
+
+              covered = int(
+                  root.attrib.get("lines-covered", 0)
+              )
 
               total_valid += valid
               total_covered += covered
@@ -79,9 +102,14 @@ jobs:
               print("Coverage contains no executable lines.")
               sys.exit(1)
 
-          coverage = (total_covered / total_valid) * 100
+          coverage = (
+              total_covered / total_valid
+          ) * 100
 
-          print(f"Total line coverage: {coverage:.2f}%")
+          print(
+              f"Total line coverage: {coverage:.2f}%"
+          )
+
           print("Required minimum: 70%")
 
           if coverage < 70:
