@@ -86,31 +86,30 @@ jobs:
               print("No coverage file found.")
               sys.exit(1)
 
-          total_valid = 0
-          total_covered = 0
+          total_lines = 0
+          covered_lines = 0
 
           for file in files:
               print(f"Reading coverage: {file}")
 
               root = ET.parse(file).getroot()
 
-              valid = int(
-                  root.attrib.get("lines-valid", 0)
-              )
+              for line in root.iter("line"):
+                  total_lines += 1
 
-              covered = int(
-                  root.attrib.get("lines-covered", 0)
-              )
+                  hits = int(
+                      line.attrib.get("hits", 0)
+                  )
 
-              total_valid += valid
-              total_covered += covered
+                  if hits > 0:
+                      covered_lines += 1
 
-          if total_valid == 0:
+          if total_lines == 0:
               print("Coverage contains no executable lines.")
               sys.exit(1)
 
           coverage = (
-              total_covered / total_valid
+              covered_lines / total_lines
           ) * 100
 
           print(
