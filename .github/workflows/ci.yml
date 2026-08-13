@@ -27,26 +27,32 @@ jobs:
       - name: Build
         run: dotnet build --no-restore
 
+      - name: Install dotnet-coverage
+        run: dotnet tool install --global dotnet-coverage
+
+      - name: Add dotnet tools to PATH
+        run: echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
+
       - name: Test Domain
         run: >
-          dotnet test ./Tests.Domain/Tests.Domain.csproj
-          --no-build
-          --logger "trx;LogFileName=domain-tests.trx"
-          --collect:"XPlat Code Coverage"
+          dotnet-coverage collect
+          "dotnet test ./Tests.Domain/Tests.Domain.csproj --no-build"
+          -f cobertura
+          -o ./TestResults/domain-coverage.xml
 
       - name: Test API
         run: >
-          dotnet test ./QuotesApi.Tests/QuotesApi.Tests.csproj
-          --no-build
-          --logger "trx;LogFileName=api-tests.trx"
-          --collect:"XPlat Code Coverage"
+          dotnet-coverage collect
+          "dotnet test ./QuotesApi.Tests/QuotesApi.Tests.csproj --no-build"
+          -f cobertura
+          -o ./TestResults/api-coverage.xml
 
       - name: Test Integration
         run: >
-          dotnet test ./Quotes.Tests.Integration/Quotes.Tests.Integration.csproj
-          --no-build
-          --logger "trx;LogFileName=integration-tests.trx"
-          --collect:"XPlat Code Coverage"
+          dotnet-coverage collect
+          "dotnet test ./Quotes.Tests.Integration/Quotes.Tests.Integration.csproj --no-build"
+          -f cobertura
+          -o ./TestResults/integration-coverage.xml
 
       - name: Upload test results
         if: always()
@@ -61,8 +67,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: coverage
-          path: '**/TestResults/**/coverage.cobertura.xml'
-          if-no-files-found: warn
+          path: './TestResults/*.xml'
+          if-no-files-found: error
 
       - name: Check coverage
         shell: bash
@@ -73,8 +79,7 @@ jobs:
           import xml.etree.ElementTree as ET
 
           files = glob.glob(
-              "**/TestResults/**/coverage.cobertura.xml",
-              recursive=True
+              "TestResults/*-coverage.xml"
           )
 
           if not files:
@@ -85,6 +90,8 @@ jobs:
           total_covered = 0
 
           for file in files:
+              print(f"Reading coverage: {file}")
+
               root = ET.parse(file).getroot()
 
               valid = int(
