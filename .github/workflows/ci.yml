@@ -56,7 +56,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: test-results
-          path: './TestResults/**/*.trx'
+          path: '**/TestResults/**/*.trx'
           if-no-files-found: warn
 
       - name: Upload coverage
@@ -64,7 +64,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: coverage
-          path: './TestResults/**/coverage.cobertura.xml'
+          path: '**/TestResults/**/coverage.cobertura.xml'
           if-no-files-found: error
 
       - name: Check coverage
@@ -76,7 +76,7 @@ jobs:
           import xml.etree.ElementTree as ET
 
           files = glob.glob(
-              "TestResults/**/coverage.cobertura.xml",
+              "**/TestResults/**/coverage.cobertura.xml",
               recursive=True
           )
 
