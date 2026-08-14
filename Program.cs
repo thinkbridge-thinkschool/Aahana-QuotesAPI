@@ -10,12 +10,30 @@ using QuotesApi.Extensions;
 using QuotesApi.Middleware;
 using QuotesApi.Services;
 using QuotesApi.Abstractions;
+using Azure.Monitor.OpenTelemetry.AspNetCore;
 using Serilog;
 using Serilog.Context;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Serilog configuration
+// OpenTelemetry + Azure Application Insights
+builder.Services
+    .AddOpenTelemetry()
+    .UseAzureMonitor(options =>
+    {
+        options.ConnectionString =
+            builder.Configuration[
+                "APPLICATIONINSIGHTS_CONNECTION_STRING"];
+    })
+    .WithTracing(tracing =>
+    {
+        tracing
+            .AddAspNetCoreInstrumentation()
+            .AddEntityFrameworkCoreInstrumentation()
+            .AddHttpClientInstrumentation();
+    });
+
+// Serilog
 builder.Host.UseSerilog((context, services, configuration) =>
 {
     configuration
@@ -175,21 +193,17 @@ builder.Services.AddScoped<
 
 var app = builder.Build();
 
-// Correlation ID / TraceId
+// Correlation ID for Serilog
 app.Use(async (ctx, next) =>
 {
     using (LogContext.PushProperty(
         "TraceId",
-        ctx.TraceIdentifier))
+        System.Diagnostics.Activity.Current?.TraceId.ToString()
+        ?? ctx.TraceIdentifier))
     {
         await next();
     }
 });
-
-app.UseMiddleware<ExceptionHandlingMiddleware>();
-
-app.UseAuthentication();
-app.UseAuthorization();
 
 // Request logging
 app.Use(async (ctx, next) =>
@@ -205,6 +219,11 @@ app.Use(async (ctx, next) =>
         "Request completed {StatusCode}",
         ctx.Response.StatusCode);
 });
+
+app.UseMiddleware<ExceptionHandlingMiddleware>();
+
+app.UseAuthentication();
+app.UseAuthorization();
 
 using (var scope = app.Services.CreateScope())
 {
