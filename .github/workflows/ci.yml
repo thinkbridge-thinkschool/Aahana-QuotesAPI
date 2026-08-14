@@ -27,39 +27,36 @@ jobs:
       - name: Build
         run: dotnet build --no-restore
 
-      - name: Install dotnet-coverage
-        run: dotnet tool install --global dotnet-coverage
-
-      - name: Add dotnet tools to PATH
-        run: echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
-
       - name: Test Domain
         run: >
-          dotnet-coverage collect
-          "dotnet test ./Tests.Domain/Tests.Domain.csproj --no-build"
-          -f cobertura
-          -o ./TestResults/domain-coverage.xml
+          dotnet test ./Tests.Domain/Tests.Domain.csproj
+          --no-build
+          --logger "trx;LogFileName=domain-tests.trx"
+          --collect:"XPlat Code Coverage"
+          --results-directory ./TestResults/domain
 
       - name: Test API
         run: >
-          dotnet-coverage collect
-          "dotnet test ./QuotesApi.Tests/QuotesApi.Tests.csproj --no-build"
-          -f cobertura
-          -o ./TestResults/api-coverage.xml
+          dotnet test ./QuotesApi.Tests/QuotesApi.Tests.csproj
+          --no-build
+          --logger "trx;LogFileName=api-tests.trx"
+          --collect:"XPlat Code Coverage"
+          --results-directory ./TestResults/api
 
       - name: Test Integration
         run: >
-          dotnet-coverage collect
-          "dotnet test ./Quotes.Tests.Integration/Quotes.Tests.Integration.csproj --no-build"
-          -f cobertura
-          -o ./TestResults/integration-coverage.xml
+          dotnet test ./Quotes.Tests.Integration/Quotes.Tests.Integration.csproj
+          --no-build
+          --logger "trx;LogFileName=integration-tests.trx"
+          --collect:"XPlat Code Coverage"
+          --results-directory ./TestResults/integration
 
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: test-results
-          path: '**/TestResults/**/*.trx'
+          path: './TestResults/**/*.trx'
           if-no-files-found: warn
 
       - name: Upload coverage
@@ -67,7 +64,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: coverage
-          path: './TestResults/*.xml'
+          path: './TestResults/**/coverage.cobertura.xml'
           if-no-files-found: error
 
       - name: Check coverage
@@ -78,13 +75,16 @@ jobs:
           import sys
           import xml.etree.ElementTree as ET
 
-          files = glob.glob("TestResults/*-coverage.xml")
+          files = glob.glob(
+              "TestResults/**/coverage.cobertura.xml",
+              recursive=True
+          )
 
           if not files:
               print("No coverage file found.")
               sys.exit(1)
 
-          total_lines = 0
+          total_valid = 0
           total_covered = 0
 
           for file in files:
@@ -92,25 +92,19 @@ jobs:
 
               root = ET.parse(file).getroot()
 
-              file_lines = 0
-              file_covered = 0
+              valid = int(root.attrib.get("lines-valid", 0))
+              covered = int(root.attrib.get("lines-covered", 0))
 
-              for line in root.findall(".//line"):
-                  file_lines += 1
+              print(f"  Lines: {covered}/{valid}")
 
-                  if int(line.attrib.get("hits", "0")) > 0:
-                      file_covered += 1
+              total_valid += valid
+              total_covered += covered
 
-              print(f"  Lines: {file_covered}/{file_lines}")
-
-              total_lines += file_lines
-              total_covered += file_covered
-
-          if total_lines == 0:
+          if total_valid == 0:
               print("Coverage contains no executable lines.")
               sys.exit(1)
 
-          coverage = (total_covered / total_lines) * 100
+          coverage = (total_covered / total_valid) * 100
 
           print(f"Total line coverage: {coverage:.2f}%")
           print("Required minimum: 70%")
