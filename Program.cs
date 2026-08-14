@@ -10,8 +10,19 @@ using QuotesApi.Extensions;
 using QuotesApi.Middleware;
 using QuotesApi.Services;
 using QuotesApi.Abstractions;
+using Serilog;
+using Serilog.Context;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Serilog configuration
+builder.Host.UseSerilog((context, services, configuration) =>
+{
+    configuration
+        .ReadFrom.Configuration(context.Configuration)
+        .Enrich.FromLogContext()
+        .WriteTo.Console();
+});
 
 builder.Services.AddProblemDetails();
 
@@ -164,10 +175,36 @@ builder.Services.AddScoped<
 
 var app = builder.Build();
 
+// Correlation ID / TraceId
+app.Use(async (ctx, next) =>
+{
+    using (LogContext.PushProperty(
+        "TraceId",
+        ctx.TraceIdentifier))
+    {
+        await next();
+    }
+});
+
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 
 app.UseAuthentication();
 app.UseAuthorization();
+
+// Request logging
+app.Use(async (ctx, next) =>
+{
+    Log.Information(
+        "Request started {Method} {Path}",
+        ctx.Request.Method,
+        ctx.Request.Path);
+
+    await next();
+
+    Log.Information(
+        "Request completed {StatusCode}",
+        ctx.Response.StatusCode);
+});
 
 using (var scope = app.Services.CreateScope())
 {
