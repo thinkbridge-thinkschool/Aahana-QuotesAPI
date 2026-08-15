@@ -4,6 +4,12 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Http.Resilience;
+using Azure.Monitor.OpenTelemetry.AspNetCore;
+using Serilog;
+using Serilog.Context;
+
 using QuotesApi;
 using QuotesApi.Authorization;
 using QuotesApi.Data;
@@ -11,10 +17,6 @@ using QuotesApi.Extensions;
 using QuotesApi.Middleware;
 using QuotesApi.Services;
 using QuotesApi.Abstractions;
-using Microsoft.Extensions.Options;
-using Azure.Monitor.OpenTelemetry.AspNetCore;
-using Serilog;
-using Serilog.Context;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -51,6 +53,31 @@ builder.Services.AddInfrastructure(
 builder.Services.AddScoped<RefreshTokenService>();
 builder.Services.AddScoped<TokenService>();
 builder.Services.AddSingleton<IClock, SystemClock>();
+
+// HTTP resilience with Polly
+builder.Services
+    .AddHttpClient("my-service")
+    .AddResilienceHandler("default", resilience =>
+    {
+        resilience.AddRetry(new HttpRetryStrategyOptions
+        {
+            MaxRetryAttempts = 3,
+            BackoffType = DelayBackoffType.Exponential,
+            UseJitter = true
+        });
+
+        resilience.AddCircuitBreaker(
+            new HttpCircuitBreakerStrategyOptions
+            {
+                FailureRatio = 0.5,
+                SamplingDuration = TimeSpan.FromSeconds(30),
+                MinimumThroughput = 10,
+                BreakDuration = TimeSpan.FromSeconds(30)
+            });
+
+        resilience.AddTimeout(
+            TimeSpan.FromSeconds(10));
+    });
 
 // JWT configuration through JwtOptions
 var jwtOptions =
