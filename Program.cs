@@ -4,27 +4,28 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using QuotesApi;
 using QuotesApi.Authorization;
 using QuotesApi.Data;
 using QuotesApi.Extensions;
 using QuotesApi.Middleware;
 using QuotesApi.Services;
 using QuotesApi.Abstractions;
+using Microsoft.Extensions.Options;
 using Azure.Monitor.OpenTelemetry.AspNetCore;
 using Serilog;
 using Serilog.Context;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Configuration + IOptions
+builder.Services.Configure<JwtOptions>(
+    builder.Configuration.GetSection("Jwt"));
+
 // OpenTelemetry + Azure Application Insights
 builder.Services
     .AddOpenTelemetry()
-    .UseAzureMonitor(options =>
-    {
-        options.ConnectionString =
-            builder.Configuration[
-                "APPLICATIONINSIGHTS_CONNECTION_STRING"];
-    })
+    .UseAzureMonitor()
     .WithTracing(tracing =>
     {
         tracing
@@ -48,19 +49,20 @@ builder.Services.AddInfrastructure(
     builder.Configuration);
 
 builder.Services.AddScoped<RefreshTokenService>();
+builder.Services.AddScoped<TokenService>();
 builder.Services.AddSingleton<IClock, SystemClock>();
 
-var jwtKey = builder.Configuration["Jwt:Key"]
+// JWT configuration through JwtOptions
+var jwtOptions =
+    builder.Configuration
+        .GetSection("Jwt")
+        .Get<JwtOptions>()
     ?? throw new InvalidOperationException(
-        "JWT signing key is not configured.");
+        "JWT configuration is not configured.");
 
-var jwtIssuer = builder.Configuration["Jwt:Issuer"]
-    ?? throw new InvalidOperationException(
-        "JWT issuer is not configured.");
-
-var jwtAudience = builder.Configuration["Jwt:Audience"]
-    ?? throw new InvalidOperationException(
-        "JWT audience is not configured.");
+var jwtKey = jwtOptions.Key;
+var jwtIssuer = jwtOptions.Issuer;
+var jwtAudience = jwtOptions.Audience;
 
 var entraTenantId = builder.Configuration["Entra:TenantId"]
     ?? throw new InvalidOperationException(
