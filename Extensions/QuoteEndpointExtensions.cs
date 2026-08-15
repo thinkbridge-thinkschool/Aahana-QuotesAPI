@@ -35,11 +35,14 @@ public static class QuoteEndpointExtensions
             return Results.Ok(quotes);
         });
 
+        // Day 5: Intentionally slow endpoint for observability exercise
         group.MapGet("/{id:int}", async (
             int id,
             IQuoteRepository repository,
             CancellationToken cancellationToken) =>
         {
+            await Task.Delay(1500, cancellationToken);
+
             var quote = await repository.GetByIdAsync(
                 id,
                 cancellationToken);
