@@ -1,0 +1,9 @@
+name: quotes-api
+metadata:
+  template: azd-init
+
+services:
+  quotes-api:
+    project: .
+    language: dotnet
+    host: containerapp
