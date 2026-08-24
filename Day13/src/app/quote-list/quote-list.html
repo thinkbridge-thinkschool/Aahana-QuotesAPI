@@ -1,0 +1,48 @@
+<section>
+  <h2>Quote List</h2>
+
+  <p>{{ queryDescription() }}</p>
+
+  <div class="controls">
+    <button (click)="previousPage()">Previous</button>
+
+    <span>Page {{ page() }}</span>
+
+    <button (click)="nextPage()">Next</button>
+
+    <label>
+      Page size:
+      <select [value]="size()" (change)="changeSize($event)">
+        <option value="5">5</option>
+        <option value="10">10</option>
+        <option value="20">20</option>
+      </select>
+    </label>
+  </div>
+
+  @switch (uiState()) {
+    @case ('loading') {
+      <p>Loading quotes...</p>
+    }
+
+    @case ('error') {
+      <p>{{ error() }}</p>
+    }
+
+    @case ('empty') {
+      <p>No quotes found for this page.</p>
+    }
+
+    @default {
+      <div class="quotes">
+        @for (quote of quotes(); track quote.Id) {
+          <article>
+            <h3>{{ quote.Author }}</h3>
+            <p>{{ quote.Text }}</p>
+            <small>ID: {{ quote.Id }}</small>
+          </article>
+        }
+      </div>
+    }
+  }
+</section>
