@@ -6,7 +6,7 @@ section {
   display: flex;
   gap: 12px;
   align-items: center;
-  margin: 20px 0;
+  margin-bottom: 20px;
 }
 
 button,
@@ -14,13 +14,40 @@ select {
   padding: 8px 12px;
 }
 
-article {
-  padding: 15px;
-  margin: 12px 0;
-  border: 1px solid #ccc;
-  border-radius: 8px;
+.layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
 }
 
-article h3 {
-  margin-bottom: 5px;
+.quote-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.quote-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: left;
+  cursor: pointer;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  background: white;
+}
+
+.quote-card.selected {
+  border-width: 2px;
+}
+
+.detail {
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  padding: 20px;
+  min-height: 150px;
+}
+
+.error {
+  font-weight: bold;
 }

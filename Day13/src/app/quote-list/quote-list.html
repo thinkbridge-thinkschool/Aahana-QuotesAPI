@@ -1,18 +1,27 @@
 <section>
-  <h2>Quote List</h2>
-
-  <p>{{ queryDescription() }}</p>
+  <h2>Quotes</h2>
 
   <div class="controls">
-    <button (click)="previousPage()">Previous</button>
+    <button
+      type="button"
+      (click)="previousPage()"
+      [disabled]="page() === 1">
+      Previous
+    </button>
 
     <span>Page {{ page() }}</span>
 
-    <button (click)="nextPage()">Next</button>
+    <button
+      type="button"
+      (click)="nextPage()">
+      Next
+    </button>
 
     <label>
-      Page size:
-      <select [value]="size()" (change)="changeSize($event)">
+      Size:
+      <select
+        [value]="size()"
+        (change)="changeSize($event)">
         <option value="5">5</option>
         <option value="10">10</option>
         <option value="20">20</option>
@@ -20,29 +29,48 @@
     </label>
   </div>
 
-  @switch (uiState()) {
-    @case ('loading') {
-      <p>Loading quotes...</p>
-    }
+  @if (listLoading()) {
+    <p>Loading quotes...</p>
+  } @else if (listError()) {
+    <p class="error">{{ listError() }}</p>
+  } @else if (!hasQuotes()) {
+    <p>No quotes found.</p>
+  } @else {
+    <div class="layout">
 
-    @case ('error') {
-      <p>{{ error() }}</p>
-    }
-
-    @case ('empty') {
-      <p>No quotes found for this page.</p>
-    }
-
-    @default {
-      <div class="quotes">
+      <div class="quote-list">
         @for (quote of quotes(); track quote.Id) {
-          <article>
-            <h3>{{ quote.Author }}</h3>
-            <p>{{ quote.Text }}</p>
+          <button
+            type="button"
+            class="quote-card"
+            (click)="selectQuote(quote.Id)"
+            [class.selected]="selectedId() === quote.Id">
+
+            <strong>{{ quote.Author }}</strong>
+
+            <span>{{ quote.Text }}</span>
+
             <small>ID: {{ quote.Id }}</small>
-          </article>
+          </button>
         }
       </div>
-    }
+
+      <aside class="detail">
+
+        @if (detailLoading()) {
+          <p>Loading quote details...</p>
+        } @else if (detailError()) {
+          <p class="error">{{ detailError() }}</p>
+        } @else if (selectedQuote(); as quote) {
+          <h3>{{ quote.Author }}</h3>
+          <p>{{ quote.Text }}</p>
+          <small>ID: {{ quote.Id }}</small>
+        } @else {
+          <p>Select a quote to see its details.</p>
+        }
+
+      </aside>
+
+    </div>
   }
 </section>

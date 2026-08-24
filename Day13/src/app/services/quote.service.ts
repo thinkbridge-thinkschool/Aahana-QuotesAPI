@@ -12,15 +12,19 @@ export interface Quote {
   providedIn: 'root'
 })
 export class QuoteService {
-  private http = inject(HttpClient);
+  private readonly http = inject(HttpClient);
 
-  private readonly baseUrl = 'http://localhost:5050/api/quotes/';
+  private readonly baseUrl = 'http://localhost:5050/api/quotes';
 
   getQuotes(page: number, size: number): Observable<Quote[]> {
     const params = new HttpParams()
       .set('page', page)
       .set('size', size);
 
-    return this.http.get<Quote[]>(this.baseUrl, { params });
+    return this.http.get<Quote[]>(this.baseUrl + '/', { params });
+  }
+
+  getQuote(id: number): Observable<Quote> {
+    return this.http.get<Quote>(`${this.baseUrl}/${id}`);
   }
 }
