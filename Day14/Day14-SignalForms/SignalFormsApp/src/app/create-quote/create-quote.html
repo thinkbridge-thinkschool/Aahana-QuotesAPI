@@ -1,0 +1,116 @@
+<section aria-labelledby="create-quote-title">
+  <h2 id="create-quote-title">Create a Quote — Signal Forms</h2>
+
+  <form (submit)="submit($event)" novalidate>
+
+    <div>
+      <label for="author">Author</label>
+
+      <input
+        #authorInput
+        id="author"
+        type="text"
+        [formField]="quoteForm.Author"
+        aria-describedby="author-error"
+        [attr.aria-invalid]="
+          quoteForm.Author().invalid() ? 'true' : 'false'
+        " />
+
+      @if (
+        quoteForm.Author().invalid() &&
+        (
+          quoteForm.Author().touched() ||
+          quoteForm.Author().dirty()
+        )
+      ) {
+        <p
+          id="author-error"
+          class="error"
+          role="alert">
+
+          @for (
+            error of quoteForm.Author().errors();
+            track error.kind
+          ) {
+            {{ error.message }}
+          }
+
+        </p>
+      }
+    </div>
+
+    <div>
+      <label for="quote-text">Quote</label>
+
+      <textarea
+        id="quote-text"
+        [formField]="quoteForm.Text"
+        rows="6"
+        aria-describedby="text-error"
+        [attr.aria-invalid]="
+          quoteForm.Text().invalid() ? 'true' : 'false'
+        ">
+      </textarea>
+
+      @if (
+        quoteForm.Text().invalid() &&
+        (
+          quoteForm.Text().touched() ||
+          quoteForm.Text().dirty()
+        )
+      ) {
+        <p
+          id="text-error"
+          class="error"
+          role="alert">
+
+          @for (
+            error of quoteForm.Text().errors();
+            track error.kind
+          ) {
+            {{ error.message }}
+          }
+
+        </p>
+      }
+    </div>
+
+    @if (serverError()) {
+      <p
+        class="error"
+        role="alert">
+        {{ serverError() }}
+      </p>
+    }
+
+    @if (success()) {
+      <p role="status">
+        {{ success() }}
+      </p>
+    }
+
+    <button
+      type="submit"
+      [disabled]="submitting()">
+
+      @if (submitting()) {
+        Submitting...
+      } @else {
+        Create quote
+      }
+
+    </button>
+
+  </form>
+
+  <p>
+    Author dirty:
+    {{ quoteForm.Author().dirty() }}
+  </p>
+
+  <p>
+    Author touched:
+    {{ quoteForm.Author().touched() }}
+  </p>
+
+</section>
