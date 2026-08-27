@@ -65,7 +65,7 @@ interface LoginResponse {
           </button>
 
           <p class="field-hint">
-            Demo credentials: demo&#64;thinkschool.local / Interview#2026
+            Demo credentials: demo&#64;thinkschool.local / ThinkSchool2026
           </p>
         </form>
       </div>
