@@ -1,5 +1,7 @@
 export interface Quote {
-  Id: number;
-  Author: string;
-  Text: string;
+  id: number;
+  userId: number;
+  author: string;
+  text: string;
+  isDeleted: boolean;
 }

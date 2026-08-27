@@ -17,7 +17,7 @@ export class QuoteService {
   private readonly http = inject(HttpClient);
 
   private readonly baseUrl =
-    'http://localhost:5000/api/quotes/';
+    'http://localhost:5145/api/quotes/';
 
   getQuotes(
     page: number,
@@ -30,6 +30,12 @@ export class QuoteService {
     return this.http.get<Quote[]>(
       this.baseUrl,
       { params }
+    );
+  }
+
+  getQuoteById(id: number): Observable<Quote> {
+    return this.http.get<Quote>(
+      `${this.baseUrl}${id}`
     );
   }
 }
