@@ -1,15 +1,15 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
-  <TargetFramework>net10.0</TargetFramework>
-  <Nullable>enable</Nullable>
-  <ImplicitUsings>enable</ImplicitUsings>
-  <UserSecretsId>6bd2f9f8-f9dc-4cad-a77f-fa0ba74cd856</UserSecretsId>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>6bd2f9f8-f9dc-4cad-a77f-fa0ba74cd856</UserSecretsId>
 
-  <ContainerImageName>quotes-api</ContainerImageName>
-  <ContainerImageTag>0.1.0</ContainerImageTag>
-  <ContainerBaseImage>mcr.microsoft.com/dotnet/aspnet:10.0-alpine</ContainerBaseImage>
-</PropertyGroup>
+    <ContainerImageName>quotes-api</ContainerImageName>
+    <ContainerImageTag>0.1.0</ContainerImageTag>
+    <ContainerBaseImage>mcr.microsoft.com/dotnet/aspnet:10.0-alpine</ContainerBaseImage>
+  </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="BCrypt.Net-Next" Version="4.2.0" />
@@ -22,6 +22,8 @@
     </PackageReference>
 
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.10" />
+
+    <PackageReference Include="Microsoft.Extensions.Http.Resilience" Version="10.0.10" />
 
     <PackageReference Include="Serilog.AspNetCore" Version="10.0.0" />
     <PackageReference Include="Serilog.Sinks.Console" Version="6.1.1" />
@@ -39,6 +41,13 @@
     <Compile Remove="QuotesApi.Tests\**" />
     <Compile Remove="Tests.Domain\**" />
     <Compile Remove="Quotes.Tests.Integration\**" />
+
+    <Compile Remove="Day10\**" />
+    <Compile Remove="Day10-QueryTranslation\**" />
+    <Compile Remove="Day11\**" />
+    <Compile Remove="Day12\**" />
+    <Compile Remove="Day14\**" />
+    <Compile Remove="Day15\**" />
   </ItemGroup>
 
 </Project>

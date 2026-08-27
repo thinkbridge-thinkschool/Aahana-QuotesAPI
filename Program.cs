@@ -1,12 +1,14 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Text;
+
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.Extensions.Options;
-using Microsoft.Extensions.Http.Resilience;
+
 using Azure.Monitor.OpenTelemetry.AspNetCore;
+
 using Serilog;
 using Serilog.Context;
 
@@ -25,16 +27,24 @@ builder.Services.Configure<JwtOptions>(
     builder.Configuration.GetSection("Jwt"));
 
 // OpenTelemetry + Azure Application Insights
-builder.Services
-    .AddOpenTelemetry()
-    .UseAzureMonitor()
-    .WithTracing(tracing =>
-    {
-        tracing
-            .AddAspNetCoreInstrumentation()
-            .AddEntityFrameworkCoreInstrumentation()
-            .AddHttpClientInstrumentation();
-    });
+// Azure Monitor is enabled only when a connection string is configured.
+var azureMonitorConnectionString =
+    builder.Configuration["APPLICATIONINSIGHTS_CONNECTION_STRING"];
+
+if (!string.IsNullOrWhiteSpace(azureMonitorConnectionString))
+{
+    builder.Services
+        .AddOpenTelemetry()
+        .UseAzureMonitor(options =>
+        {
+            options.ConnectionString =
+                azureMonitorConnectionString;
+        });
+}
+else
+{
+    builder.Services.AddOpenTelemetry();
+}
 
 // Serilog
 builder.Host.UseSerilog((context, services, configuration) =>
@@ -47,37 +57,26 @@ builder.Host.UseSerilog((context, services, configuration) =>
 
 builder.Services.AddProblemDetails();
 
+// CORS for the local Angular dev server (ng serve, default port 4200)
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AngularDevClient", policy =>
+    {
+        policy
+            .WithOrigins("http://localhost:4200")
+            .AllowAnyHeader()
+            .AllowAnyMethod();
+    });
+});
+
 builder.Services.AddInfrastructure(
     builder.Configuration);
 
 builder.Services.AddScoped<RefreshTokenService>();
 builder.Services.AddScoped<TokenService>();
-builder.Services.AddSingleton<IClock, SystemClock>();
 
-// HTTP resilience with Polly
-builder.Services
-    .AddHttpClient("my-service")
-    .AddResilienceHandler("default", resilience =>
-    {
-        resilience.AddRetry(new HttpRetryStrategyOptions
-        {
-            MaxRetryAttempts = 3,
-            BackoffType = DelayBackoffType.Exponential,
-            UseJitter = true
-        });
-
-        resilience.AddCircuitBreaker(
-            new HttpCircuitBreakerStrategyOptions
-            {
-                FailureRatio = 0.5,
-                SamplingDuration = TimeSpan.FromSeconds(30),
-                MinimumThroughput = 10,
-                BreakDuration = TimeSpan.FromSeconds(30)
-            });
-
-        resilience.AddTimeout(
-            TimeSpan.FromSeconds(10));
-    });
+// HTTP client
+builder.Services.AddHttpClient("my-service");
 
 // JWT configuration through JwtOptions
 var jwtOptions =
@@ -162,6 +161,11 @@ builder.Services
         "InternalJwt",
         options =>
         {
+            // Keep short claim types (e.g. "sub") as-is instead of
+            // remapping them to long ClaimTypes URIs, so endpoint code
+            // reading JwtRegisteredClaimNames.Sub finds the claim.
+            options.MapInboundClaims = false;
+
             options.TokenValidationParameters =
                 new TokenValidationParameters
                 {
@@ -250,6 +254,11 @@ app.Use(async (ctx, next) =>
 });
 
 app.UseMiddleware<ExceptionHandlingMiddleware>();
+
+if (app.Environment.IsDevelopment())
+{
+    app.UseCors("AngularDevClient");
+}
 
 app.UseAuthentication();
 app.UseAuthorization();
