@@ -1,12 +1,15 @@
-﻿using MediatR;
+﻿using System.Diagnostics;
+using Dapper;
 using Microsoft.Data.Sqlite;
-using Microsoft.Extensions.DependencyInjection;
+using Microsoft.EntityFrameworkCore;
+
+const string connectionString = "Data Source=day12.db";
 
 // ============================================================
 // DATABASE SETUP
 // ============================================================
 
-using (var connection = new SqliteConnection("Data Source=day12.db"))
+using (var connection = new SqliteConnection(connectionString))
 {
     connection.Open();
 
@@ -23,199 +26,152 @@ using (var connection = new SqliteConnection("Data Source=day12.db"))
         """;
 
     command.ExecuteNonQuery();
-}
 
-// ============================================================
-// MEDIATR SETUP
-// ============================================================
+    command.CommandText = "SELECT COUNT(*) FROM Quotes;";
 
-var services = new ServiceCollection();
+    var count = Convert.ToInt32(command.ExecuteScalar());
 
-services.AddMediatR(configuration =>
-{
-    configuration.RegisterServicesFromAssemblyContaining<
-        CreateQuoteCommandHandler>();
-});
-
-var provider = services.BuildServiceProvider();
-
-var mediator = provider.GetRequiredService<IMediator>();
-
-// ============================================================
-// COMMAND — WRITE MODEL
-// ============================================================
-
-var commandResult = await mediator.Send(
-    new CreateQuoteCommand(
-        "Albert Einstein",
-        "Life is like riding a bicycle."));
-
-Console.WriteLine("===== COMMAND / WRITE MODEL =====");
-Console.WriteLine($"Created quote ID: {commandResult.Id}");
-Console.WriteLine($"Author: {commandResult.Author}");
-Console.WriteLine($"Text: {commandResult.Text}");
-
-// ============================================================
-// QUERY — READ MODEL
-// ============================================================
-
-var readModel = await mediator.Send(
-    new GetQuoteReadModelQuery(commandResult.Id));
-
-Console.WriteLine();
-Console.WriteLine("===== QUERY / READ MODEL =====");
-Console.WriteLine($"ID: {readModel.Id}");
-Console.WriteLine($"Display: {readModel.DisplayText}");
-
-// ============================================================
-// COMMAND
-// ============================================================
-
-public sealed record CreateQuoteCommand(
-    string Author,
-    string Text) : IRequest<QuoteWriteResult>;
-
-// ============================================================
-// WRITE MODEL RESULT
-// ============================================================
-
-public sealed record QuoteWriteResult(
-    int Id,
-    string Author,
-    string Text);
-
-// ============================================================
-// COMMAND HANDLER
-// ============================================================
-
-public sealed class CreateQuoteCommandHandler
-    : IRequestHandler<CreateQuoteCommand, QuoteWriteResult>
-{
-    public async Task<QuoteWriteResult> Handle(
-        CreateQuoteCommand request,
-        CancellationToken cancellationToken)
+    if (count == 0)
     {
-        if (string.IsNullOrWhiteSpace(request.Author))
-        {
-            throw new ArgumentException(
-                "Author is required.");
-        }
-
-        if (string.IsNullOrWhiteSpace(request.Text))
-        {
-            throw new ArgumentException(
-                "Quote text is required.");
-        }
-
-        var author = request.Author.Trim();
-        var text = request.Text.Trim();
-
-        using var connection =
-            new SqliteConnection(
-                "Data Source=day12.db");
-
-        await connection.OpenAsync(
-            cancellationToken);
-
-        using var command =
-            connection.CreateCommand();
-
         command.CommandText =
             """
             INSERT INTO Quotes (Author, Text)
-            VALUES ($author, $text);
-
-            SELECT last_insert_rowid();
+            VALUES
+            ('Albert Einstein', 'Life is like riding a bicycle.'),
+            ('William Shakespeare', 'To be, or not to be.'),
+            ('Oscar Wilde', 'Be yourself; everyone else is already taken.');
             """;
 
-        command.Parameters.AddWithValue(
-            "$author",
-            author);
-
-        command.Parameters.AddWithValue(
-            "$text",
-            text);
-
-        var result =
-            await command.ExecuteScalarAsync(
-                cancellationToken);
-
-        var id = Convert.ToInt32(result);
-
-        return new QuoteWriteResult(
-            id,
-            author,
-            text);
+        command.ExecuteNonQuery();
     }
 }
 
 // ============================================================
-// QUERY
+// EF CORE IMPLEMENTATION
 // ============================================================
 
-public sealed record GetQuoteReadModelQuery(
-    int Id) : IRequest<QuoteReadModel>;
+var efOptions =
+    new DbContextOptionsBuilder<QuotesDbContext>()
+        .UseSqlite(connectionString)
+        .Options;
+
+using var db = new QuotesDbContext(efOptions);
+
+var stopwatch = Stopwatch.StartNew();
+
+var efQuotes = await db.Quotes
+    .AsNoTracking()
+    .OrderBy(q => q.Id)
+    .Select(q => new QuoteReadModel(
+        q.Id,
+        q.Author,
+        q.Text))
+    .ToListAsync();
+
+stopwatch.Stop();
+
+var efTime = stopwatch.Elapsed.TotalMilliseconds;
+
+// ============================================================
+// DAPPER IMPLEMENTATION
+// ============================================================
+
+using var dapperConnection =
+    new SqliteConnection(connectionString);
+
+await dapperConnection.OpenAsync();
+
+stopwatch.Restart();
+
+var dapperQuotes =
+    (await dapperConnection.QueryAsync<QuoteReadModel>(
+        """
+        SELECT
+            Id,
+            Author,
+            Text
+        FROM Quotes
+        ORDER BY Id;
+        """))
+    .ToList();
+
+stopwatch.Stop();
+
+var dapperTime = stopwatch.Elapsed.TotalMilliseconds;
+
+// ============================================================
+// RESULTS
+// ============================================================
+
+Console.WriteLine("===== EF CORE =====");
+Console.WriteLine($"Rows: {efQuotes.Count}");
+Console.WriteLine($"Time: {efTime:F3} ms");
+
+Console.WriteLine();
+
+Console.WriteLine("===== DAPPER =====");
+Console.WriteLine($"Rows: {dapperQuotes.Count}");
+Console.WriteLine($"Time: {dapperTime:F3} ms");
+
+Console.WriteLine();
+
+Console.WriteLine("===== SQL =====");
+Console.WriteLine(
+    "SELECT Id, Author, Text FROM Quotes ORDER BY Id;");
+
+Console.WriteLine();
+
+Console.WriteLine("===== COMPARISON =====");
+
+if (dapperTime < efTime)
+{
+    Console.WriteLine(
+        $"Dapper was {(efTime / dapperTime):F2}x faster in this run.");
+}
+else if (efTime < dapperTime)
+{
+    Console.WriteLine(
+        $"EF Core was {(dapperTime / efTime):F2}x faster in this run.");
+}
+else
+{
+    Console.WriteLine("Both implementations had the same timing.");
+}
 
 // ============================================================
 // READ MODEL
 // ============================================================
 
 public sealed record QuoteReadModel(
-    int Id,
-    string DisplayText);
+    long Id,
+    string Author,
+    string Text);
 
 // ============================================================
-// QUERY HANDLER
+// EF ENTITY
 // ============================================================
 
-public sealed class GetQuoteReadModelQueryHandler
-    : IRequestHandler<GetQuoteReadModelQuery, QuoteReadModel>
+public sealed class QuoteEntity
 {
-    public async Task<QuoteReadModel> Handle(
-        GetQuoteReadModelQuery request,
-        CancellationToken cancellationToken)
+    public int Id { get; set; }
+
+    public string Author { get; set; } = string.Empty;
+
+    public string Text { get; set; } = string.Empty;
+}
+
+// ============================================================
+// EF DB CONTEXT
+// ============================================================
+
+public sealed class QuotesDbContext : DbContext
+{
+    public QuotesDbContext(
+        DbContextOptions<QuotesDbContext> options)
+        : base(options)
     {
-        using var connection =
-            new SqliteConnection(
-                "Data Source=day12.db");
-
-        await connection.OpenAsync(
-            cancellationToken);
-
-        using var command =
-            connection.CreateCommand();
-
-        command.CommandText =
-            """
-            SELECT Id, Author, Text
-            FROM Quotes
-            WHERE Id = $id;
-            """;
-
-        command.Parameters.AddWithValue(
-            "$id",
-            request.Id);
-
-        using var reader =
-            await command.ExecuteReaderAsync(
-                cancellationToken);
-
-        if (!await reader.ReadAsync(
-                cancellationToken))
-        {
-            throw new InvalidOperationException(
-                "Quote not found.");
-        }
-
-        var id = reader.GetInt32(0);
-        var author = reader.GetString(1);
-        var text = reader.GetString(2);
-
-        var displayText =
-            $"\"{text}\" — {author}";
-
-        return new QuoteReadModel(
-            id,
-            displayText);
     }
+
+    public DbSet<QuoteEntity> Quotes =>
+        Set<QuoteEntity>();
 }
