@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 
 import { QuoteService } from '../../services/quote.service';
@@ -18,19 +18,19 @@ import { Quote } from '../../models/quote';
       </div>
 
       <div aria-live="polite">
-        @if (loading) {
+        @if (loading()) {
           <p class="status-message">
             <span class="spinner" aria-hidden="true"></span>
             Loading quote…
           </p>
         }
 
-        @if (error) {
-          <p class="alert" role="alert">{{ error }}</p>
+        @if (error()) {
+          <p class="alert" role="alert">{{ error() }}</p>
         }
       </div>
 
-      @if (quote) {
+      @if (quote(); as quote) {
         <section class="card quote-detail">
           <p class="quote-card__text" style="font-size: 1.25rem;">
             &ldquo;{{ quote.text }}&rdquo;
@@ -56,32 +56,32 @@ export class QuoteDetailComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly quoteService = inject(QuoteService);
 
-  quote: Quote | null = null;
-  loading = true;
-  error = '';
+  quote = signal<Quote | null>(null);
+  loading = signal(true);
+  error = signal('');
 
   constructor() {
     const idParam = this.route.snapshot.paramMap.get('id');
     const id = Number(idParam);
 
     if (!idParam || !Number.isInteger(id) || id < 1) {
-      this.loading = false;
-      this.error = 'Invalid quote ID.';
+      this.loading.set(false);
+      this.error.set('Invalid quote ID.');
       return;
     }
 
     this.quoteService.getQuoteById(id).subscribe({
       next: quote => {
-        this.quote = quote;
-        this.loading = false;
+        this.quote.set(quote);
+        this.loading.set(false);
       },
       error: response => {
-        this.loading = false;
+        this.loading.set(false);
 
         if (response.status === 404) {
-          this.error = 'Quote not found.';
+          this.error.set('Quote not found.');
         } else {
-          this.error = 'Failed to load quote.';
+          this.error.set('Failed to load quote.');
         }
       }
     });

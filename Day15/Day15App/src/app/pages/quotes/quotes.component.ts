@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { QuoteService } from '../../services/quote.service';
 import { Quote } from '../../models/quote';
@@ -15,27 +15,27 @@ import { Quote } from '../../models/quote';
       </div>
 
       <div aria-live="polite">
-        @if (loading) {
+        @if (loading()) {
           <p class="status-message">
             <span class="spinner" aria-hidden="true"></span>
             Loading quotes…
           </p>
         }
 
-        @if (error) {
+        @if (error()) {
           <p class="alert" role="alert">
             Failed to load quotes. Check that the API is running and try again.
           </p>
         }
 
-        @if (!loading && !error && quotes.length === 0) {
+        @if (!loading() && !error() && quotes().length === 0) {
           <p class="empty-state">No quotes yet.</p>
         }
       </div>
 
-      @if (quotes.length > 0) {
+      @if (quotes().length > 0) {
         <ul class="quote-grid" style="list-style: none; padding: 0; margin-top: 0;">
-          @for (quote of quotes; track quote.id) {
+          @for (quote of quotes(); track quote.id) {
             <li class="card">
               <article>
                 <p class="quote-card__text">&ldquo;{{ quote.text }}&rdquo;</p>
@@ -59,19 +59,19 @@ import { Quote } from '../../models/quote';
 export class QuotesComponent {
   private readonly quoteService = inject(QuoteService);
 
-  quotes: Quote[] = [];
-  loading = true;
-  error = false;
+  quotes = signal<Quote[]>([]);
+  loading = signal(true);
+  error = signal(false);
 
   constructor() {
     this.quoteService.getQuotes(1, 10).subscribe({
       next: quotes => {
-        this.quotes = quotes;
-        this.loading = false;
+        this.quotes.set(quotes);
+        this.loading.set(false);
       },
       error: () => {
-        this.error = true;
-        this.loading = false;
+        this.error.set(true);
+        this.loading.set(false);
       }
     });
   }
