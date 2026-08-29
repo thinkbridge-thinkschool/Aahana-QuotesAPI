@@ -285,6 +285,24 @@ using (var scope = app.Services.CreateScope())
             .GetRequiredService<QuoteDbContext>();
 
     await db.Database.MigrateAsync();
+
+    // The login page advertises these demo credentials; make sure they
+    // actually work on a fresh database instead of only in whichever
+    // environment someone happened to seed by hand.
+    var demoUserExists = await db.Users.AnyAsync(
+        u => u.Email == "demo@thinkschool.local");
+
+    if (!demoUserExists)
+    {
+        db.Users.Add(new QuotesApi.Models.User
+        {
+            Email = "demo@thinkschool.local",
+            PasswordHash = global::BCrypt.Net.BCrypt.HashPassword(
+                "ThinkSchool2026")
+        });
+
+        await db.SaveChangesAsync();
+    }
 }
 
 app.MapAuthEndpoints();
