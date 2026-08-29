@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Cryptography;
 using System.Text;
@@ -15,6 +16,90 @@ public static class AuthEndpointExtensions
     public static IEndpointRouteBuilder MapAuthEndpoints(
         this IEndpointRouteBuilder app)
     {
+        // REGISTER
+        app.MapPost(
+            "/api/auth/register",
+            async (
+                RegisterRequest request,
+                QuoteDbContext db,
+                IConfiguration configuration,
+                CancellationToken cancellationToken) =>
+            {
+                var validationContext =
+                    new ValidationContext(request);
+
+                var validationResults =
+                    new List<ValidationResult>();
+
+                if (!Validator.TryValidateObject(
+                        request,
+                        validationContext,
+                        validationResults,
+                        true))
+                {
+                    var errors = validationResults
+                        .GroupBy(
+                            x => x.MemberNames.FirstOrDefault()
+                                 ?? "request")
+                        .ToDictionary(
+                            g => g.Key,
+                            g => g.Select(
+                                x => x.ErrorMessage
+                                    ?? "Invalid value").ToArray());
+
+                    return Results.ValidationProblem(errors);
+                }
+
+                var normalizedEmail = request.Email.Trim();
+
+                var emailInUse = await db.Users.AnyAsync(
+                    u => u.Email == normalizedEmail,
+                    cancellationToken);
+
+                if (emailInUse)
+                {
+                    return Results.Conflict(new
+                    {
+                        message = "An account with this email already exists."
+                    });
+                }
+
+                var user = new User
+                {
+                    Email = normalizedEmail,
+                    PasswordHash = global::BCrypt.Net.BCrypt.HashPassword(
+                        request.Password)
+                };
+
+                db.Users.Add(user);
+
+                await db.SaveChangesAsync(cancellationToken);
+
+                var accessToken = CreateAccessToken(
+                    user,
+                    configuration);
+
+                var refreshToken = GenerateRefreshToken();
+
+                db.RefreshTokens.Add(new RefreshToken
+                {
+                    Token = HashToken(refreshToken),
+                    UserId = user.Id,
+                    ExpiresAt = DateTime.UtcNow.AddDays(7)
+                });
+
+                await db.SaveChangesAsync(cancellationToken);
+
+                return Results.Created(
+                    "/api/auth/login",
+                    new
+                    {
+                        access_token = accessToken,
+                        refresh_token = refreshToken,
+                        expires_in = 900
+                    });
+            });
+
         // LOGIN
         app.MapPost(
             "/api/auth/login",

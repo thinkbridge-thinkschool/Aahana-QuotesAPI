@@ -1,30 +1,30 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Router, RouterLink } from '@angular/router';
 
 import { AuthService } from '../../services/auth.service';
 import { environment } from '../../../environments/environment';
 
-interface LoginResponse {
+interface RegisterResponse {
   access_token: string;
   refresh_token: string;
   expires_in: number;
 }
 
 @Component({
-  selector: 'app-login',
+  selector: 'app-register',
   standalone: true,
   imports: [FormsModule, RouterLink],
   template: `
     <main id="main-content" class="page">
       <div class="page-header">
-        <span class="page-header__eyebrow">Sign in</span>
-        <h1>Log in</h1>
+        <span class="page-header__eyebrow">Sign up</span>
+        <h1>Create an account</h1>
       </div>
 
       <div class="card" style="max-width: 26rem;">
-        <form (ngSubmit)="login()" novalidate>
+        <form (ngSubmit)="register()" novalidate>
           @if (errorMessage()) {
             <p class="alert" role="alert">{{ errorMessage() }}</p>
           }
@@ -47,10 +47,12 @@ interface LoginResponse {
               id="password"
               name="password"
               type="password"
-              autocomplete="current-password"
+              autocomplete="new-password"
               required
+              minlength="8"
               [(ngModel)]="password"
             />
+            <p class="field-hint">At least 8 characters.</p>
           </div>
 
           <button
@@ -62,22 +64,18 @@ interface LoginResponse {
             @if (loading()) {
               <span class="spinner" aria-hidden="true"></span>
             }
-            {{ loading() ? 'Signing in…' : 'Log in' }}
+            {{ loading() ? 'Creating account…' : 'Sign up' }}
           </button>
 
           <p class="field-hint">
-            Demo credentials: demo&#64;thinkschool.local / ThinkSchool2026
-          </p>
-
-          <p class="field-hint">
-            Don't have an account? <a routerLink="/register">Sign up</a>
+            Already have an account? <a routerLink="/login">Log in</a>
           </p>
         </form>
       </div>
     </main>
   `
 })
-export class LoginComponent {
+export class RegisterComponent {
   private readonly http = inject(HttpClient);
   private readonly router = inject(Router);
   private readonly authService = inject(AuthService);
@@ -88,9 +86,14 @@ export class LoginComponent {
   loading = signal(false);
   errorMessage = signal('');
 
-  login(): void {
+  register(): void {
     if (!this.email || !this.password) {
       this.errorMessage.set('Enter both an email and a password.');
+      return;
+    }
+
+    if (this.password.length < 8) {
+      this.errorMessage.set('Password must be at least 8 characters.');
       return;
     }
 
@@ -98,7 +101,7 @@ export class LoginComponent {
     this.loading.set(true);
 
     this.http
-      .post<LoginResponse>(`${environment.apiBaseUrl}/api/auth/login`, {
+      .post<RegisterResponse>(`${environment.apiBaseUrl}/api/auth/register`, {
         email: this.email,
         password: this.password
       })
@@ -112,9 +115,19 @@ export class LoginComponent {
           this.loading.set(false);
           this.router.navigate(['/quotes']);
         },
-        error: () => {
+        error: (error: HttpErrorResponse) => {
           this.loading.set(false);
-          this.errorMessage.set('Invalid email or password.');
+
+          if (error.status === 409) {
+            this.errorMessage.set(
+              'An account with this email already exists.'
+            );
+            return;
+          }
+
+          this.errorMessage.set(
+            'Unable to create an account. Check your details and try again.'
+          );
         }
       });
   }

@@ -15,6 +15,13 @@ export const routes: Routes = [
         .then(m => m.LoginComponent)
   },
   {
+    path: 'register',
+    title: 'Sign up — thinkschool quotes',
+    loadComponent: () =>
+      import('./pages/register/register.component')
+        .then(m => m.RegisterComponent)
+  },
+  {
     path: 'quotes',
     title: 'Quotes — thinkschool quotes',
     loadComponent: () =>
