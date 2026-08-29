@@ -4,6 +4,7 @@ import { Observable } from 'rxjs';
 
 import { Quote } from '../models/quote';
 import { ProblemDetails } from '../models/problem-details';
+import { environment } from '../../environments/environment';
 
 export interface ApiError {
   status: number;
@@ -17,7 +18,7 @@ export class QuoteService {
   private readonly http = inject(HttpClient);
 
   private readonly baseUrl =
-    'http://localhost:5145/api/quotes/';
+    `${environment.apiBaseUrl}/api/quotes/`;
 
   getQuotes(
     page: number,

@@ -57,15 +57,27 @@ builder.Host.UseSerilog((context, services, configuration) =>
 
 builder.Services.AddProblemDetails();
 
-// CORS for the local Angular dev server (ng serve, default port 4200)
+// CORS for the Angular dev server (ng serve, default port 4200) plus
+// whatever production origins (SWA default hostname, custom domain) are
+// configured via Cors:AllowedOrigins.
+var configuredOrigins = builder.Configuration
+    .GetSection("Cors:AllowedOrigins")
+    .Get<string[]>() ?? [];
+
+var corsOrigins = configuredOrigins
+    .Append("http://localhost:4200")
+    .Distinct()
+    .ToArray();
+
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AngularDevClient", policy =>
+    options.AddPolicy("AngularClient", policy =>
     {
         policy
-            .WithOrigins("http://localhost:4200")
+            .WithOrigins(corsOrigins)
             .AllowAnyHeader()
-            .AllowAnyMethod();
+            .AllowAnyMethod()
+            .WithExposedHeaders("Retry-After");
     });
 });
 
@@ -255,10 +267,7 @@ app.Use(async (ctx, next) =>
 
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 
-if (app.Environment.IsDevelopment())
-{
-    app.UseCors("AngularDevClient");
-}
+app.UseCors("AngularClient");
 
 app.UseAuthentication();
 app.UseAuthorization();

@@ -4,6 +4,7 @@ import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 
 import { AuthService } from '../../services/auth.service';
+import { environment } from '../../../environments/environment';
 
 interface LoginResponse {
   access_token: string;
@@ -93,7 +94,7 @@ export class LoginComponent {
     this.loading.set(true);
 
     this.http
-      .post<LoginResponse>('http://localhost:5145/api/auth/login', {
+      .post<LoginResponse>(`${environment.apiBaseUrl}/api/auth/login`, {
         email: this.email,
         password: this.password
       })

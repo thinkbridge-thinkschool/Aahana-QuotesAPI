@@ -48,6 +48,7 @@
     <Compile Remove="Day12\**" />
     <Compile Remove="Day14\**" />
     <Compile Remove="Day15\**" />
+    <Compile Remove="Day17\**" />
   </ItemGroup>
 
 </Project>

@@ -1,0 +1,30 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "swaLocation": {
+      "value": "centralus"
+    },
+    "location": {
+      "value": "centralindia"
+    },
+    "staticSiteName": {
+      "value": "quotes-frontend"
+    },
+    "functionAppName": {
+      "value": "quotes-frontend-api"
+    },
+    "storageAccountName": {
+      "value": "quotesfrontendstg"
+    },
+    "customDomainName": {
+      "value": ""
+    },
+    "quotesApiBaseUrl": {
+      "value": "https://REPLACE-WITH-QUOTES-API-URL"
+    },
+    "quotesApiEntraAudience": {
+      "value": "api://953b5bcb-682b-47b4-a116-8936323f5bec"
+    }
+  }
+}
