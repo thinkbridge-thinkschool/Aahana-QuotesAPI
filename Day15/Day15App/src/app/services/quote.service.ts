@@ -11,6 +11,11 @@ export interface ApiError {
   problem: ProblemDetails;
 }
 
+export interface CreateQuoteRequest {
+  author: string;
+  text: string;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -37,6 +42,13 @@ export class QuoteService {
   getQuoteById(id: number): Observable<Quote> {
     return this.http.get<Quote>(
       `${this.baseUrl}${id}`
+    );
+  }
+
+  createQuote(request: CreateQuoteRequest): Observable<Quote> {
+    return this.http.post<Quote>(
+      this.baseUrl,
+      request
     );
   }
 }

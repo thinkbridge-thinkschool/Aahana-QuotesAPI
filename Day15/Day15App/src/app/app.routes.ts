@@ -30,6 +30,14 @@ export const routes: Routes = [
         .then(m => m.QuoteDetailComponent)
   },
   {
+    path: 'quotes-new',
+    title: 'Add a quote — thinkschool quotes',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./pages/create-quote/create-quote.component')
+        .then(m => m.CreateQuoteComponent)
+  },
+  {
     path: '**',
     redirectTo: 'quotes'
   }

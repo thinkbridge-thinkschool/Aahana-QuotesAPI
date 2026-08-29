@@ -16,6 +16,7 @@
       </a>
 
       @if (authService.isAuthenticated()) {
+        <a routerLink="/quotes-new" routerLinkActive="is-active">Add a quote</a>
         <button type="button" class="btn-quiet" (click)="logout()">
           Log out
         </button>
