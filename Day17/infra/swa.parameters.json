@@ -3,7 +3,7 @@
   "contentVersion": "1.0.0.0",
   "parameters": {
     "swaLocation": {
-      "value": "centralus"
+      "value": "eastasia"
     },
     "location": {
       "value": "centralindia"

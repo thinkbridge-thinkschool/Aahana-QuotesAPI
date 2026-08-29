@@ -3,5 +3,5 @@
 // secret here — this is a public API base URL, not a credential.
 export const environment = {
   production: true,
-  apiBaseUrl: 'https://REPLACE-WITH-QUOTES-API-URL'
+  apiBaseUrl: 'https://quotes-api.orangebeach-4969d067.centralindia.azurecontainerapps.io'
 };

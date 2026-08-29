@@ -4,7 +4,7 @@
 targetScope = 'resourceGroup'
 
 @description('Azure region for the Static Web App (SWA has a restricted region list).')
-param swaLocation string = 'centralus'
+param swaLocation string = 'eastasia'
 
 @description('Region for the Function App, storage account, and plan.')
 param location string = 'centralindia'

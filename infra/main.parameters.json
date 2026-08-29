@@ -14,8 +14,8 @@
     "containerAppName": {
       "value": "quotes-api"
     },
-    "containerImage": {
-      "value": "quotes-api:0.1.0"
+    "containerImageTag": {
+      "value": "0.1.0"
     }
   }
 }

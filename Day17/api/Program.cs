@@ -4,7 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
 var host = new HostBuilder()
-    .ConfigureFunctionsWebApplication()
+    .ConfigureFunctionsWorkerDefaults()
     .ConfigureServices(services =>
     {
         // In Azure this resolves to the Function App's system-assigned

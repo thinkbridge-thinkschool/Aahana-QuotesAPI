@@ -154,8 +154,16 @@ builder.Services
 
                     var issuer = jwt.Issuer;
 
+                    // Entra issues v1 tokens (issuer sts.windows.net) for
+                    // app registrations without requestedAccessTokenVersion
+                    // set to 2, and v2 tokens (login.microsoftonline.com)
+                    // otherwise. EntraJwt's ValidIssuers already accepts
+                    // both, so route on either.
                     if (issuer.Contains(
                             "login.microsoftonline.com",
+                            StringComparison.OrdinalIgnoreCase) ||
+                        issuer.Contains(
+                            "sts.windows.net",
                             StringComparison.OrdinalIgnoreCase))
                     {
                         return "EntraJwt";
@@ -173,9 +181,7 @@ builder.Services
         "InternalJwt",
         options =>
         {
-            // Keep short claim types (e.g. "sub") as-is instead of
-            // remapping them to long ClaimTypes URIs, so endpoint code
-            // reading JwtRegisteredClaimNames.Sub finds the claim.
+            
             options.MapInboundClaims = false;
 
             options.TokenValidationParameters =
