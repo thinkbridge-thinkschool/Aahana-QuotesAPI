@@ -42,13 +42,20 @@
     <Compile Remove="Tests.Domain\**" />
     <Compile Remove="Quotes.Tests.Integration\**" />
 
-    <Compile Remove="Day10\**" />
-    <Compile Remove="Day10-QueryTranslation\**" />
-    <Compile Remove="Day11\**" />
-    <Compile Remove="Day12\**" />
-    <Compile Remove="Day14\**" />
-    <Compile Remove="Day15\**" />
-    <Compile Remove="Day17\**" />
+    <!--
+      Every DayNN folder is its own standalone project sharing this
+      directory tree. Without this wildcard exclude, the SDK's default
+      "**/*.cs" compile glob pulls in their source (and, worse, their
+      generated obj/*.AssemblyInfo.cs files if a Day folder has ever
+      been built locally) causing CS0579 duplicate-attribute errors in
+      THIS project. A fresh CI clone never has stray obj/ folders lying
+      around, so this only ever breaks for someone who built a Day
+      folder locally first - which is exactly what happened here.
+      Previously this was an enumerated list (Day10, Day11, Day12...)
+      that had to be updated by hand for every new day and silently
+      fell behind (Day18-21 were missing). A wildcard can't fall behind.
+    -->
+    <Compile Remove="Day*\**" />
   </ItemGroup>
 
 </Project>
