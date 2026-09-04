@@ -75,8 +75,24 @@ builder.Services.AddInfrastructure(
 builder.Services.AddScoped<RefreshTokenService>();
 builder.Services.AddScoped<TokenService>();
 
-// HTTP client
-builder.Services.AddHttpClient("my-service");
+// Outbound "fact" dependency (Day 22): GET /api/quotes/{id}/fact enriches a
+// quote with a fact from a free public API. Wrapped in a bulkhead, timeout,
+// retry (idempotent GETs only) and circuit breaker so a slow/flaky
+// dependency can't exhaust threads or cascade into request failures.
+builder.Services
+    .AddHttpClient<IFunFactProvider, ChuckNorrisFactProvider>(client =>
+    {
+        client.BaseAddress = new Uri("https://api.chucknorris.io/");
+    })
+    .AddFactApiResilience(
+        FactApiResilienceOptions.Default,
+        onOpened: breakDuration => Log.Warning(
+            "Circuit breaker for fact-api OPENED for {BreakDuration}",
+            breakDuration),
+        onHalfOpened: () => Log.Information(
+            "Circuit breaker for fact-api HALF-OPENED, testing recovery"),
+        onClosed: () => Log.Information(
+            "Circuit breaker for fact-api CLOSED, dependency recovered"));
 
 // JWT configuration through JwtOptions
 var jwtOptions =

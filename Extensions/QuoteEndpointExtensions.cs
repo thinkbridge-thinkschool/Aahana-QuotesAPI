@@ -8,6 +8,9 @@ using QuotesApi.Models;
 using QuotesApi.Repositories;
 using QuotesApi.Authorization;
 using Microsoft.AspNetCore.Authorization;
+using Polly.CircuitBreaker;
+using Polly.RateLimiting;
+using Polly.Timeout;
 
 namespace QuotesApi.Extensions;
 
@@ -50,6 +53,55 @@ public static class QuoteEndpointExtensions
             return quote is null
                 ? Results.NotFound()
                 : Results.Ok(quote);
+        });
+
+        // Day 22: fact enrichment via an outbound dependency wrapped in a
+        // Polly resilience pipeline (bulkhead, timeout, retry, circuit
+        // breaker - see HttpResilienceExtensions.AddFactApiResilience).
+        // Enrichment is best-effort: a failing/overloaded/broken-circuit
+        // fact API degrades to a 503 for this endpoint, it never breaks
+        // the quote read itself.
+        group.MapGet("/{id:int}/fact", async (
+            int id,
+            IQuoteRepository repository,
+            IFunFactProvider factProvider,
+            ILoggerFactory loggerFactory,
+            CancellationToken cancellationToken) =>
+        {
+            var quote = await repository.GetByIdAsync(
+                id,
+                cancellationToken);
+
+            if (quote is null)
+            {
+                return Results.NotFound();
+            }
+
+            try
+            {
+                var fact = await factProvider.GetFactAsync(
+                    cancellationToken);
+
+                return Results.Ok(new { quote, fact });
+            }
+            catch (Exception ex) when (
+                ex is BrokenCircuitException
+                    or TimeoutRejectedException
+                    or RateLimiterRejectedException
+                    or HttpRequestException)
+            {
+                var logger = loggerFactory.CreateLogger(
+                    "QuotesApi.QuoteEndpoints");
+
+                logger.LogWarning(
+                    ex,
+                    "Fact API unavailable for quote {QuoteId}",
+                    id);
+
+                return Results.Problem(
+                    title: "Fact service unavailable",
+                    statusCode: StatusCodes.Status503ServiceUnavailable);
+            }
         });
 
         group.MapPost("/", async (
