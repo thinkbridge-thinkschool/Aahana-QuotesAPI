@@ -65,7 +65,8 @@ src/app/
 ├── guards/auth.guard.ts        — CanActivateFn, checks for an access_token in localStorage
 ├── interceptors/
 │   ├── auth.interceptor.ts     — attaches Authorization: Bearer <token> if one exists
-│   ├── retry.interceptor.ts    — retries GET requests up to twice on 5xx/network errors (exponential backoff)
+│   ├── retry.interceptor.ts    — retries up to twice: GET on 5xx/network errors, any method on 408/429
+│   │                             (honors Retry-After), all with exponential backoff
 │   └── error.interceptor.ts    — normalizes ProblemDetails-shaped error bodies into a typed ApiError
 ├── services/
 │   ├── quote.service.ts        — getQuotes(page,size), getQuoteById(id)

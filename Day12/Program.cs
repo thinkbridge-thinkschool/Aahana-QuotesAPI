@@ -5,9 +5,7 @@ using Microsoft.EntityFrameworkCore;
 
 const string connectionString = "Data Source=day12.db";
 
-// ============================================================
-// DATABASE SETUP
-// ============================================================
+
 
 using (var connection = new SqliteConnection(connectionString))
 {
@@ -46,9 +44,7 @@ using (var connection = new SqliteConnection(connectionString))
     }
 }
 
-// ============================================================
-// EF CORE IMPLEMENTATION
-// ============================================================
+
 
 var efOptions =
     new DbContextOptionsBuilder<QuotesDbContext>()

@@ -1,9 +1,3 @@
--- Day 7: Set Operations
-
--- 1. Authors with quotes but no collection
--- Operator: EXCEPT
--- Why: returns authors present in the first set but absent from the second.
-
 SELECT DISTINCT Author
 FROM Quotes
 WHERE IsDeleted = 0
