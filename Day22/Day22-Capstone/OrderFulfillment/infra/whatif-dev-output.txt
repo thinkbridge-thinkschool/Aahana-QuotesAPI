@@ -1,0 +1,182 @@
+WARNING: A new Bicep release is available: v0.47.16. Upgrade now by running "az bicep upgrade".
+Note: The result may contain false positive predictions (noise).
+You can help us improve the accuracy of the result by opening an issue here: https://aka.ms/WhatIfIssues
+
+Resource and property changes are indicated with this symbol:
+  + Create
+
+The deployment will update the following scopes:
+
+Scope: /subscriptions/68a88491-0c9b-4750-9cb7-1fa2157daeb8
+
+  + resourceGroups/orderfulfillment-rg-dev [2025-04-01]
+
+      apiVersion:       "2025-04-01"
+      id:               "/subscriptions/68a88491-0c9b-4750-9cb7-1fa2157daeb8/resourceGroups/orderfulfillment-rg-dev"
+      location:         "centralindia"
+      name:             "orderfulfillment-rg-dev"
+      tags.app:         "order-fulfillment-capstone"
+      tags.environment: "dev"
+      type:             "Microsoft.Resources/resourceGroups"
+
+Scope: /subscriptions/68a88491-0c9b-4750-9cb7-1fa2157daeb8/resourceGroups/orderfulfillment-rg-dev
+
+  + Microsoft.ServiceBus/namespaces/orderfulfillment-sb-dev-wq5mb2ijh5gfu [2023-01-01-preview]
+
+      apiVersion:                   "2023-01-01-preview"
+      id:                           "/subscriptions/68a88491-0c9b-4750-9cb7-1fa2157daeb8/resourceGroups/orderfulfillment-rg-dev/providers/Microsoft.ServiceBus/namespaces/orderfulfillment-sb-dev-wq5mb2ijh5gfu"
+      location:                     "centralindia"
+      name:                         "orderfulfillment-sb-dev-wq5mb2ijh5gfu"
+      properties.disableLocalAuth:  true
+      properties.minimumTlsVersion: "1.2"
+      sku.name:                     "Standard"
+      type:                         "Microsoft.ServiceBus/namespaces"
+
+  + Microsoft.ServiceBus/namespaces/orderfulfillment-sb-dev-wq5mb2ijh5gfu/topics/order-fulfillment-events [2023-01-01-preview]
+
+      apiVersion:                          "2023-01-01-preview"
+      id:                                  "/subscriptions/68a88491-0c9b-4750-9cb7-1fa2157daeb8/resourceGroups/orderfulfillment-rg-dev/providers/Microsoft.ServiceBus/namespaces/orderfulfillment-sb-dev-wq5mb2ijh5gfu/topics/order-fulfillment-events"
+      name:                                "order-fulfillment-events"
+      properties.defaultMessageTimeToLive: "P14D"
+      type:                                "Microsoft.ServiceBus/namespaces/topics"
+
+  + Microsoft.ServiceBus/namespaces/orderfulfillment-sb-dev-wq5mb2ijh5gfu/topics/order-fulfillment-events/subscriptions/Inventory [2023-01-01-preview]
+
+      apiVersion:                                           "2023-01-01-preview"
+      id:                                                   "/subscriptions/68a88491-0c9b-4750-9cb7-1fa2157daeb8/resourceGroups/orderfulfillment-rg-dev/providers/Microsoft.ServiceBus/namespaces/orderfulfillment-sb-dev-wq5mb2ijh5gfu/topics/order-fulfillment-events/subscriptions/Inventory"
+      name:                                                 "Inventory"
+      properties.deadLetteringOnFilterEvaluationExceptions: true
+      properties.deadLetteringOnMessageExpiration:          true
+      properties.defaultMessageTimeToLive:                  "P14D"
+      properties.maxDeliveryCount:                          5
+      type:                                                 "Microsoft.ServiceBus/namespaces/topics/subscriptions"
+
+  + Microsoft.ServiceBus/namespaces/orderfulfillment-sb-dev-wq5mb2ijh5gfu/topics/order-fulfillment-events/subscriptions/Inventory/rules/$Default [2022-01-01-preview]
+
+      apiVersion:                         "2022-01-01-preview"
+      id:                                 "/subscriptions/68a88491-0c9b-4750-9cb7-1fa2157daeb8/resourceGroups/orderfulfillment-rg-dev/providers/Microsoft.ServiceBus/namespaces/orderfulfillment-sb-dev-wq5mb2ijh5gfu/topics/order-fulfillment-events/subscriptions/Inventory/rules/$Default"
+      name:                               "$Default"
+      properties.filterType:              "SqlFilter"
+      properties.sqlFilter.sqlExpression: "EventType IN ('OrderPlaced', 'OrderCancelled')"
+      type:                               "Microsoft.ServiceBus/namespaces/topics/subscriptions/rules"
+
+  + Microsoft.ServiceBus/namespaces/orderfulfillment-sb-dev-wq5mb2ijh5gfu/topics/order-fulfillment-events/subscriptions/Notifications [2023-01-01-preview]
+
+      apiVersion:                                           "2023-01-01-preview"
+      id:                                                   "/subscriptions/68a88491-0c9b-4750-9cb7-1fa2157daeb8/resourceGroups/orderfulfillment-rg-dev/providers/Microsoft.ServiceBus/namespaces/orderfulfillment-sb-dev-wq5mb2ijh5gfu/topics/order-fulfillment-events/subscriptions/Notifications"
+      name:                                                 "Notifications"
+      properties.deadLetteringOnFilterEvaluationExceptions: true
+      properties.deadLetteringOnMessageExpiration:          true
+      properties.defaultMessageTimeToLive:                  "P14D"
+      properties.maxDeliveryCount:                          5
+      type:                                                 "Microsoft.ServiceBus/namespaces/topics/subscriptions"
+
+  + Microsoft.ServiceBus/namespaces/orderfulfillment-sb-dev-wq5mb2ijh5gfu/topics/order-fulfillment-events/subscriptions/Notifications/rules/$Default [2022-01-01-preview]
+
+      apiVersion:                         "2022-01-01-preview"
+      id:                                 "/subscriptions/68a88491-0c9b-4750-9cb7-1fa2157daeb8/resourceGroups/orderfulfillment-rg-dev/providers/Microsoft.ServiceBus/namespaces/orderfulfillment-sb-dev-wq5mb2ijh5gfu/topics/order-fulfillment-events/subscriptions/Notifications/rules/$Default"
+      name:                               "$Default"
+      properties.filterType:              "SqlFilter"
+      properties.sqlFilter.sqlExpression: "EventType IN ('OrderPlaced', 'OrderConfirmed', 'OrderCancelled', 'PaymentFailed', 'ShipmentDispatched')"
+      type:                               "Microsoft.ServiceBus/namespaces/topics/subscriptions/rules"
+
+  + Microsoft.ServiceBus/namespaces/orderfulfillment-sb-dev-wq5mb2ijh5gfu/topics/order-fulfillment-events/subscriptions/Ordering [2023-01-01-preview]
+
+      apiVersion:                                           "2023-01-01-preview"
+      id:                                                   "/subscriptions/68a88491-0c9b-4750-9cb7-1fa2157daeb8/resourceGroups/orderfulfillment-rg-dev/providers/Microsoft.ServiceBus/namespaces/orderfulfillment-sb-dev-wq5mb2ijh5gfu/topics/order-fulfillment-events/subscriptions/Ordering"
+      name:                                                 "Ordering"
+      properties.deadLetteringOnFilterEvaluationExceptions: true
+      properties.deadLetteringOnMessageExpiration:          true
+      properties.defaultMessageTimeToLive:                  "P14D"
+      properties.maxDeliveryCount:                          5
+      type:                                                 "Microsoft.ServiceBus/namespaces/topics/subscriptions"
+
+  + Microsoft.ServiceBus/namespaces/orderfulfillment-sb-dev-wq5mb2ijh5gfu/topics/order-fulfillment-events/subscriptions/Ordering/rules/$Default [2022-01-01-preview]
+
+      apiVersion:                         "2022-01-01-preview"
+      id:                                 "/subscriptions/68a88491-0c9b-4750-9cb7-1fa2157daeb8/resourceGroups/orderfulfillment-rg-dev/providers/Microsoft.ServiceBus/namespaces/orderfulfillment-sb-dev-wq5mb2ijh5gfu/topics/order-fulfillment-events/subscriptions/Ordering/rules/$Default"
+      name:                               "$Default"
+      properties.filterType:              "SqlFilter"
+      properties.sqlFilter.sqlExpression: "EventType IN ('StockReserved', 'StockReservationFailed', 'PaymentCaptured', 'PaymentFailed', 'ShipmentDispatched')"
+      type:                               "Microsoft.ServiceBus/namespaces/topics/subscriptions/rules"
+
+  + Microsoft.ServiceBus/namespaces/orderfulfillment-sb-dev-wq5mb2ijh5gfu/topics/order-fulfillment-events/subscriptions/Payments [2023-01-01-preview]
+
+      apiVersion:                                           "2023-01-01-preview"
+      id:                                                   "/subscriptions/68a88491-0c9b-4750-9cb7-1fa2157daeb8/resourceGroups/orderfulfillment-rg-dev/providers/Microsoft.ServiceBus/namespaces/orderfulfillment-sb-dev-wq5mb2ijh5gfu/topics/order-fulfillment-events/subscriptions/Payments"
+      name:                                                 "Payments"
+      properties.deadLetteringOnFilterEvaluationExceptions: true
+      properties.deadLetteringOnMessageExpiration:          true
+      properties.defaultMessageTimeToLive:                  "P14D"
+      properties.maxDeliveryCount:                          5
+      type:                                                 "Microsoft.ServiceBus/namespaces/topics/subscriptions"
+
+  + Microsoft.ServiceBus/namespaces/orderfulfillment-sb-dev-wq5mb2ijh5gfu/topics/order-fulfillment-events/subscriptions/Payments/rules/$Default [2022-01-01-preview]
+
+      apiVersion:                         "2022-01-01-preview"
+      id:                                 "/subscriptions/68a88491-0c9b-4750-9cb7-1fa2157daeb8/resourceGroups/orderfulfillment-rg-dev/providers/Microsoft.ServiceBus/namespaces/orderfulfillment-sb-dev-wq5mb2ijh5gfu/topics/order-fulfillment-events/subscriptions/Payments/rules/$Default"
+      name:                               "$Default"
+      properties.filterType:              "SqlFilter"
+      properties.sqlFilter.sqlExpression: "EventType IN ('OrderConfirmed')"
+      type:                               "Microsoft.ServiceBus/namespaces/topics/subscriptions/rules"
+
+  + Microsoft.ServiceBus/namespaces/orderfulfillment-sb-dev-wq5mb2ijh5gfu/topics/order-fulfillment-events/subscriptions/Shipping [2023-01-01-preview]
+
+      apiVersion:                                           "2023-01-01-preview"
+      id:                                                   "/subscriptions/68a88491-0c9b-4750-9cb7-1fa2157daeb8/resourceGroups/orderfulfillment-rg-dev/providers/Microsoft.ServiceBus/namespaces/orderfulfillment-sb-dev-wq5mb2ijh5gfu/topics/order-fulfillment-events/subscriptions/Shipping"
+      name:                                                 "Shipping"
+      properties.deadLetteringOnFilterEvaluationExceptions: true
+      properties.deadLetteringOnMessageExpiration:          true
+      properties.defaultMessageTimeToLive:                  "P14D"
+      properties.maxDeliveryCount:                          5
+      type:                                                 "Microsoft.ServiceBus/namespaces/topics/subscriptions"
+
+  + Microsoft.ServiceBus/namespaces/orderfulfillment-sb-dev-wq5mb2ijh5gfu/topics/order-fulfillment-events/subscriptions/Shipping/rules/$Default [2022-01-01-preview]
+
+      apiVersion:                         "2022-01-01-preview"
+      id:                                 "/subscriptions/68a88491-0c9b-4750-9cb7-1fa2157daeb8/resourceGroups/orderfulfillment-rg-dev/providers/Microsoft.ServiceBus/namespaces/orderfulfillment-sb-dev-wq5mb2ijh5gfu/topics/order-fulfillment-events/subscriptions/Shipping/rules/$Default"
+      name:                               "$Default"
+      properties.filterType:              "SqlFilter"
+      properties.sqlFilter.sqlExpression: "EventType IN ('OrderPaymentReceived')"
+      type:                               "Microsoft.ServiceBus/namespaces/topics/subscriptions/rules"
+
+  + Microsoft.Sql/servers/orderfulfillment-sql-dev-wq5mb2ijh5gfu [2023-08-01-preview]
+
+      apiVersion:                                          "2023-08-01-preview"
+      id:                                                  "/subscriptions/68a88491-0c9b-4750-9cb7-1fa2157daeb8/resourceGroups/orderfulfillment-rg-dev/providers/Microsoft.Sql/servers/orderfulfillment-sql-dev-wq5mb2ijh5gfu"
+      location:                                            "centralindia"
+      name:                                                "orderfulfillment-sql-dev-wq5mb2ijh5gfu"
+      properties.administrators.administratorType:         "ActiveDirectory"
+      properties.administrators.azureADOnlyAuthentication: true
+      properties.administrators.login:                     "*******"
+      properties.administrators.sid:                       "00000000-0000-0000-0000-000000000000"
+      properties.administrators.tenantId:                  "8d46a076-d093-416d-a57b-8692cde13bf8"
+      properties.minimalTlsVersion:                        "1.2"
+      properties.publicNetworkAccess:                      "Enabled"
+      type:                                                "Microsoft.Sql/servers"
+
+  + Microsoft.Sql/servers/orderfulfillment-sql-dev-wq5mb2ijh5gfu/databases/orderfulfillmentdb [2023-08-01-preview]
+
+      apiVersion:               "2023-08-01-preview"
+      id:                       "/subscriptions/68a88491-0c9b-4750-9cb7-1fa2157daeb8/resourceGroups/orderfulfillment-rg-dev/providers/Microsoft.Sql/servers/orderfulfillment-sql-dev-wq5mb2ijh5gfu/databases/orderfulfillmentdb"
+      location:                 "centralindia"
+      name:                     "orderfulfillmentdb"
+      properties.zoneRedundant: false
+      sku.name:                 "Basic"
+      type:                     "Microsoft.Sql/servers/databases"
+
+  + Microsoft.Sql/servers/orderfulfillment-sql-dev-wq5mb2ijh5gfu/firewallRules/AllowAllWindowsAzureIps [2023-08-01-preview]
+
+      apiVersion:                "2023-08-01-preview"
+      id:                        "/subscriptions/68a88491-0c9b-4750-9cb7-1fa2157daeb8/resourceGroups/orderfulfillment-rg-dev/providers/Microsoft.Sql/servers/orderfulfillment-sql-dev-wq5mb2ijh5gfu/firewallRules/AllowAllWindowsAzureIps"
+      name:                      "AllowAllWindowsAzureIps"
+      properties.endIpAddress:   "0.0.0.0"
+      properties.startIpAddress: "0.0.0.0"
+      type:                      "Microsoft.Sql/servers/firewallRules"
+
+Resource changes: 16 to create.
+
+Diagnostics (2): 
+/subscriptions/68a88491-0c9b-4750-9cb7-1fa2157daeb8/resourceGroups/orderfulfillment-rg-dev/providers/Microsoft.Resources/deployments/orderfulfillment-api (NestedDeploymentShortCircuited) A nested deployment got short-circuited and all its resources got skipped from validation. This is due to a nested template having a parameter that was not fully evaluated (e.g. contains a reference() function). Please see https://aka.ms/WhatIfEvalStopped for more guidance.
+/subscriptions/68a88491-0c9b-4750-9cb7-1fa2157daeb8/resourceGroups/orderfulfillment-rg-dev/providers/Microsoft.Resources/deployments/orderfulfillment-servicebus-access (NestedDeploymentShortCircuited) A nested deployment got short-circuited and all its resources got skipped from validation. This is due to a nested template having a parameter that was not fully evaluated (e.g. contains a reference() function). Please see https://aka.ms/WhatIfEvalStopped for more guidance.
+
