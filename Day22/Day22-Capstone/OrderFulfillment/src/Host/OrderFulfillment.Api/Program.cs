@@ -1,3 +1,4 @@
+using System.Threading.RateLimiting;
 using Azure.Identity;
 using Azure.Messaging.ServiceBus;
 using Azure.Monitor.OpenTelemetry.AspNetCore;
@@ -5,6 +6,7 @@ using BuildingBlocks.Domain;
 using BuildingBlocks.Infrastructure;
 using Inventory.Infrastructure;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Notifications.Infrastructure;
@@ -15,6 +17,36 @@ using Payments.Infrastructure;
 using Shipping.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// --- Day 27: input limits (OWASP API4:2023, Unrestricted Resource Consumption) ---
+// 64 KB is generous for a JSON order payload (PlaceOrderValidator.MaxLines below caps line count
+// independently) — this exists so a client can't exhaust memory/CPU with an enormous request body
+// before the app-level validator ever gets a chance to run.
+// AddServerHeader = false found and fixed by the manual header check below (Docker's disk-space
+// issue ruled out a live ZAP run this pass — see DAY27-SECURITY-PASS.md): every response was
+// disclosing `Server: Kestrel`, telling an attacker exactly which web server implementation to
+// go look up known CVEs for, for free.
+builder.WebHost.ConfigureKestrel(kestrel =>
+{
+    kestrel.Limits.MaxRequestBodySize = 64 * 1024;
+    kestrel.AddServerHeader = false;
+});
+
+// A fixed window is enough for a kickoff-scope API with one real write endpoint — no per-user
+// tiering, no token-bucket burst allowance. RequireRateLimiting("orders") below is what actually
+// applies it; registering the policy alone does nothing to any endpoint.
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddFixedWindowLimiter("orders", limiter =>
+    {
+        limiter.PermitLimit = 20;
+        limiter.Window = TimeSpan.FromSeconds(10);
+        limiter.QueueLimit = 0;
+    });
+});
+
+builder.Services.AddOpenApi();
 
 // Every module wires its own DI in one call — Program.cs knows the module list, not a single
 // module's internals. This is the entire "modular" half of "modular monolith" made visible.
@@ -57,8 +89,21 @@ otelBuilder.WithTracing(tracing => tracing
 // there is nothing here to put behind @secure() in Bicep or reference from Key Vault.
 var entraTenantId = builder.Configuration["Entra:TenantId"];
 var entraAudience = builder.Configuration["Entra:Audience"];
+var entraConfigured = !string.IsNullOrEmpty(entraTenantId) && !string.IsNullOrEmpty(entraAudience);
 
-if (!string.IsNullOrEmpty(entraTenantId) && !string.IsNullOrEmpty(entraAudience))
+// --- Day 27: close the fail-open gap Day 25 documented and deliberately left open ---
+// Unauthenticated-by-default was fine for a kickoff scaffold; it is not fine for anything that
+// could plausibly run outside a developer's own machine. Refusing to start is the harden-closed
+// half of "harden the OpenAPI surface (auth...)" — a misconfigured deploy should fail loudly at
+// startup, not silently serve every endpoint to anyone.
+if (!entraConfigured && !builder.Environment.IsDevelopment())
+{
+    throw new InvalidOperationException(
+        "Entra:TenantId and Entra:Audience must be configured outside Development — refusing to " +
+        "start unauthenticated in a non-Development environment.");
+}
+
+if (entraConfigured)
 {
     builder.Services
         .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -81,10 +126,9 @@ if (!string.IsNullOrEmpty(entraTenantId) && !string.IsNullOrEmpty(entraAudience)
         });
     builder.Services.AddAuthorization();
 }
-// No Entra config present (e.g. local dev with nothing set) — endpoints stay unauthenticated
-// rather than the app refusing to start. Known trade-off: convenient locally, but it means
-// Entra:TenantId/Entra:Audience being unset in a real environment fails open, not closed. A
-// production hardening pass would make these required in non-Development environments.
+// Entra config still legitimately absent here only in Development — local `dotnet run` with
+// nothing set keeps working unauthenticated, same as Day 25, just no longer possible by accident
+// anywhere else.
 
 // --- Day 25: Managed Identity for the API -> Service Bus path ---
 // ServiceBusClient takes a fully-qualified namespace + a TokenCredential — never a connection
@@ -125,7 +169,21 @@ builder.Services.AddHostedService<OutboxProcessor>();
 
 var app = builder.Build();
 
-if (!string.IsNullOrEmpty(entraTenantId) && !string.IsNullOrEmpty(entraAudience))
+// --- Day 27: baseline security response headers ---
+// Cheap, static, and exactly the kind of thing a ZAP baseline scan flags by default when they're
+// missing — nosniff and the frame-ancestors/no-referrer pair cost nothing and close three
+// passive-scan findings before the scan even runs (see DAY27-SECURITY-PASS.md's before/after).
+app.Use(async (context, next) =>
+{
+    context.Response.Headers.Append("X-Content-Type-Options", "nosniff");
+    context.Response.Headers.Append("Referrer-Policy", "no-referrer");
+    context.Response.Headers.Append("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'");
+    await next();
+});
+
+app.UseRateLimiter();
+
+if (entraConfigured)
 {
     app.UseAuthentication();
     app.UseAuthorization();
@@ -148,13 +206,32 @@ app.UseExceptionHandler(errorApp => errorApp.Run(async context =>
     await context.Response.WriteAsJsonAsync(new { error = isDomainError ? feature!.Error.Message : "An unexpected error occurred." });
 }));
 
-var placeOrder = app.MapPost("/api/orders", async (PlaceOrderCommand command, PlaceOrderHandler handler, CancellationToken ct) =>
+app.MapOpenApi();
+
+// --- Day 27: /api/v1, not /api — URL-segment versioning. A route group prefix is enough at this
+// stage (one version, one consumer: nobody yet) without pulling in a versioning package whose
+// content-negotiation/deprecation-header machinery this API doesn't need yet.
+var ordersV1 = app.MapGroup("/api/v1/orders").RequireRateLimiting("orders");
+
+var placeOrder = ordersV1.MapPost("/", async (PlaceOrderCommand command, PlaceOrderHandler handler, CancellationToken ct) =>
 {
+    // Domain invariants (Order.Place, OrderLine.Create, Money.Of) still run inside handler —
+    // this only catches the resource-consumption shapes those deliberately don't (see
+    // PlaceOrderValidator's own comment).
+    var validationErrors = PlaceOrderValidator.Validate(command);
+    if (validationErrors.Count > 0)
+    {
+        return Results.ValidationProblem(new Dictionary<string, string[]>
+        {
+            ["command"] = [.. validationErrors],
+        });
+    }
+
     var orderId = await handler.HandleAsync(command, ct);
-    return Results.Created($"/api/orders/{orderId}", new { orderId });
+    return Results.Created($"/api/v1/orders/{orderId}", new { orderId });
 });
 
-if (!string.IsNullOrEmpty(entraTenantId) && !string.IsNullOrEmpty(entraAudience))
+if (entraConfigured)
 {
     placeOrder.RequireAuthorization();
 }

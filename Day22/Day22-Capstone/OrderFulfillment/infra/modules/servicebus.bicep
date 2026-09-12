@@ -18,6 +18,15 @@ param maxDeliveryCount int = 5
 @description('ISO 8601 duration a message can sit unprocessed before it is considered expired and dead-lettered.')
 param messageTimeToLive string = 'P14D'
 
+@description('Day 27: false closes the namespace\'s public endpoint — only traffic through the private endpoint below can reach it.')
+param allowPublicNetworkAccess bool = false
+
+@description('Subnet to place the private endpoint NIC in — modules/network.bicep\'s dedicated private-endpoints subnet.')
+param privateEndpointSubnetId string = ''
+
+@description('Private DNS Zone for privatelink.servicebus.windows.net — modules/network.bicep\'s output.')
+param privateDnsZoneId string = ''
+
 // RBAC-only: no SAS connection string exists anywhere in this template's outputs. The API
 // authenticates as itself (its managed identity) — same passwordless pattern as ACR pulls
 // (modules/api.bicep) and SQL auth (modules/sql.bicep).
@@ -31,6 +40,42 @@ resource serviceBusNamespace 'Microsoft.ServiceBus/namespaces@2023-01-01-preview
   properties: {
     disableLocalAuth: true
     minimumTlsVersion: '1.2'
+    publicNetworkAccess: allowPublicNetworkAccess ? 'Enabled' : 'Disabled'
+  }
+}
+
+@description('Day 27: private connectivity for the data tier — see network.bicep for the VNet/subnet/DNS zone this attaches to.')
+resource serviceBusPrivateEndpoint 'Microsoft.Network/privateEndpoints@2024-05-01' = if (!empty(privateEndpointSubnetId)) {
+  name: '${namespaceName}-pe'
+  location: location
+  properties: {
+    subnet: {
+      id: privateEndpointSubnetId
+    }
+    privateLinkServiceConnections: [
+      {
+        name: '${namespaceName}-plsc'
+        properties: {
+          privateLinkServiceId: serviceBusNamespace.id
+          groupIds: ['namespace']
+        }
+      }
+    ]
+  }
+}
+
+resource serviceBusPrivateDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2024-05-01' = if (!empty(privateEndpointSubnetId)) {
+  parent: serviceBusPrivateEndpoint
+  name: 'default'
+  properties: {
+    privateDnsZoneConfigs: [
+      {
+        name: 'privatelink-servicebus-windows-net'
+        properties: {
+          privateDnsZoneId: privateDnsZoneId
+        }
+      }
+    ]
   }
 }
 

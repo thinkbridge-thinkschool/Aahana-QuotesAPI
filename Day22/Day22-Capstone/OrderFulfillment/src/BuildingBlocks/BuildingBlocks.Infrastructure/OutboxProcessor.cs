@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
@@ -11,9 +12,17 @@ namespace BuildingBlocks.Infrastructure;
 ///
 /// This is the piece that turns "the DB transaction committed" into "the rest of the monolith
 /// eventually finds out" — the actual mechanism behind every async flow in DESIGN.md.
+///
+/// Takes IServiceScopeFactory, not IEnumerable&lt;IOutboxStore&gt; directly — this class is a
+/// singleton (AddHostedService), and every IOutboxStore implementation (e.g. OrderingOutboxStore)
+/// is Scoped, because it holds a DbContext. Constructor-injecting a Scoped service into a
+/// Singleton had been silently wrong since this was first written: it only surfaced when Day 27's
+/// fail-closed auth change required running the app in the Development environment locally to
+/// test — Development is the one environment where ASP.NET Core's container validates scopes by
+/// default, so the exact same latent bug had simply never been checked before.
 /// </summary>
 public class OutboxProcessor(
-    IEnumerable<IOutboxStore> stores,
+    IServiceScopeFactory scopeFactory,
     IMessageBus messageBus,
     ILogger<OutboxProcessor> logger) : BackgroundService
 {
@@ -25,9 +34,17 @@ public class OutboxProcessor(
     {
         while (!stoppingToken.IsCancellationRequested)
         {
-            foreach (var store in stores)
+            // A fresh scope every poll — never one held for the process lifetime — so each
+            // OrderingDbContext (and any other module's) lives exactly as long as one poll cycle,
+            // the same lifetime EF Core assumes a DbContext has everywhere else in this codebase.
+            using (var scope = scopeFactory.CreateScope())
             {
-                await ProcessStoreAsync(store, stoppingToken);
+                var stores = scope.ServiceProvider.GetServices<IOutboxStore>();
+
+                foreach (var store in stores)
+                {
+                    await ProcessStoreAsync(store, stoppingToken);
+                }
             }
 
             await Task.Delay(PollInterval, stoppingToken);

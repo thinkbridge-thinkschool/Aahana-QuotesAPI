@@ -50,6 +50,14 @@ param entraAudience string = ''
 param errorRateThreshold int = 5
 param errorRateWindow string = 'PT5M'
 
+// --- Day 27: private endpoints for the data tier ---
+// Default false in both environments deliberately, not just dev: closing the public endpoint is
+// the point of this pass, not a dev/prod distinction. See modules/network.bicep and
+// DAY27-SECURITY-PASS.md for the one honest gap this doesn't close (the Container App's own
+// environment isn't VNet-integrated, for reasons unrelated to this toggle).
+param allowSqlPublicNetworkAccess bool = false
+param allowServiceBusPublicNetworkAccess bool = false
+
 resource resourceGroup 'Microsoft.Resources/resourceGroups@2025-04-01' = {
   name: resourceGroupName
   location: location
@@ -68,6 +76,16 @@ var sqlServerName = 'orderfulfillment-sql-${environment}-${uniqueSuffix}'
 var serviceBusNamespaceName = 'orderfulfillment-sb-${environment}-${uniqueSuffix}'
 var logAnalyticsWorkspaceName = 'orderfulfillment-logs-${environment}'
 var appInsightsName = 'orderfulfillment-appinsights-${environment}'
+var vnetName = 'orderfulfillment-vnet-${environment}'
+
+module network 'modules/network.bicep' = {
+  name: 'orderfulfillment-network'
+  scope: resourceGroup
+  params: {
+    location: location
+    vnetName: vnetName
+  }
+}
 
 module sql 'modules/sql.bicep' = {
   name: 'orderfulfillment-sql'
@@ -80,6 +98,9 @@ module sql 'modules/sql.bicep' = {
     aadAdminObjectId: aadAdminObjectId
     skuName: sqlSkuName
     skuTier: sqlSkuTier
+    allowPublicNetworkAccess: allowSqlPublicNetworkAccess
+    privateEndpointSubnetId: network.outputs.privateEndpointSubnetId
+    privateDnsZoneId: network.outputs.sqlPrivateDnsZoneId
   }
 }
 
@@ -92,6 +113,9 @@ module serviceBus 'modules/servicebus.bicep' = {
     topicName: serviceBusTopicName
     skuName: serviceBusSkuName
     maxDeliveryCount: serviceBusMaxDeliveryCount
+    allowPublicNetworkAccess: allowServiceBusPublicNetworkAccess
+    privateEndpointSubnetId: network.outputs.privateEndpointSubnetId
+    privateDnsZoneId: network.outputs.serviceBusPrivateDnsZoneId
   }
 }
 

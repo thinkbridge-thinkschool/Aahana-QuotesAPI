@@ -24,6 +24,15 @@ param skuTier string = 'Basic'
 @description('Lets Azure-hosted resources (the Container App) reach this server without listing individual outbound IPs. Azure SQL still requires TLS + AAD auth on top of this — it only opens the firewall, not the database.')
 param allowAzureServices bool = true
 
+@description('Day 27: false closes the server\'s public endpoint entirely — only traffic through the private endpoint below can reach it. The firewall rule above becomes irrelevant (there is no public listener left for it to allow into) but is left in the template rather than deleted, since flipping this back to true for a lower environment should not also require re-adding the firewall rule by hand.')
+param allowPublicNetworkAccess bool = false
+
+@description('Subnet to place the private endpoint NIC in — modules/network.bicep\'s dedicated private-endpoints subnet.')
+param privateEndpointSubnetId string = ''
+
+@description('Private DNS Zone for privatelink.database.windows.net — modules/network.bicep\'s output.')
+param privateDnsZoneId string = ''
+
 // Entra-ID-only authentication: no SQL login/password exists on this server at all, matching
 // the passwordless pattern used for the API's registry pull (see modules/api.bicep).
 // Known gap, not silently glossed over: granting the Container App's managed identity a
@@ -44,13 +53,53 @@ resource sqlServer 'Microsoft.Sql/servers@2023-08-01-preview' = {
       azureADOnlyAuthentication: true
     }
     minimalTlsVersion: '1.2'
-    publicNetworkAccess: 'Enabled'
+    publicNetworkAccess: allowPublicNetworkAccess ? 'Enabled' : 'Disabled'
+  }
+}
+
+@description('Day 27: private connectivity for the data tier — see network.bicep for the VNet/subnet/DNS zone this attaches to.')
+resource sqlPrivateEndpoint 'Microsoft.Network/privateEndpoints@2024-05-01' = if (!empty(privateEndpointSubnetId)) {
+  name: '${sqlServerName}-pe'
+  location: location
+  properties: {
+    subnet: {
+      id: privateEndpointSubnetId
+    }
+    privateLinkServiceConnections: [
+      {
+        name: '${sqlServerName}-plsc'
+        properties: {
+          privateLinkServiceId: sqlServer.id
+          groupIds: ['sqlServer']
+        }
+      }
+    ]
+  }
+}
+
+resource sqlPrivateDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2024-05-01' = if (!empty(privateEndpointSubnetId)) {
+  parent: sqlPrivateEndpoint
+  name: 'default'
+  properties: {
+    privateDnsZoneConfigs: [
+      {
+        name: 'privatelink-database-windows-net'
+        properties: {
+          privateDnsZoneId: privateDnsZoneId
+        }
+      }
+    ]
   }
 }
 
 // Named without "Windows" — Azure rejects that as a reserved word in a resource name (only
 // caught by a real deployment; az deployment sub validate/what-if did not flag it).
-resource allowAzureServicesRule 'Microsoft.Sql/servers/firewallRules@2023-08-01-preview' = if (allowAzureServices) {
+//
+// Day 27: also gated on allowPublicNetworkAccess, not just allowAzureServices — a real deployment
+// with public access disabled fails outright (DenyPublicEndpointEnabled: "Unable to create or
+// modify firewall rules when public network interface for the server is disabled"). A firewall
+// rule is meaningless once there is no public listener left for it to filter.
+resource allowAzureServicesRule 'Microsoft.Sql/servers/firewallRules@2023-08-01-preview' = if (allowAzureServices && allowPublicNetworkAccess) {
   parent: sqlServer
   name: 'AllowAllAzureServicesIps'
   properties: {

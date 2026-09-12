@@ -17,6 +17,13 @@
   <ItemGroup>
     <!-- Day 25: Entra ID JWT validation for app auth -->
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.10" />
+    <!-- Day 27: publishes the real OpenAPI surface (/openapi/v1.json) this pass hardens -->
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.10" />
+    <!-- Pins past CVE-2026-49451 (GHSA-v5pm-xwqc-g5wc, CVSS 7.5): Microsoft.AspNetCore.OpenApi
+         10.0.10 transitively pulls Microsoft.OpenApi 2.0.0, which is vulnerable to a stack-overflow
+         DoS from a circular schema reference. Fixed in 2.7.5+ — found by `dotnet build`'s own
+         NU1903 advisory warning during this pass, not by ZAP. -->
+    <PackageReference Include="Microsoft.OpenApi" Version="2.7.5" />
   </ItemGroup>
 
   <ItemGroup>
