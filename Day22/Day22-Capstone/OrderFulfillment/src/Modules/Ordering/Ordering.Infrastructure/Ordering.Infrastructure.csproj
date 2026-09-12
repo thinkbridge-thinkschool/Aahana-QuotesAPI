@@ -9,6 +9,10 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.11" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.11" />
+    <!-- Day 25: real Azure SQL, reached via Authentication=Active Directory Default in the
+         connection string — Microsoft.Data.SqlClient resolves that through the app's own
+         managed identity, no password anywhere. Sqlite stays for local dev (see OrderingModule.cs). -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.11" />
   </ItemGroup>
 
   <PropertyGroup>

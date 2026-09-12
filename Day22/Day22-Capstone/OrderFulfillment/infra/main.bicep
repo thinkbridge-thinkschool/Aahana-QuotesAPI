@@ -39,6 +39,13 @@ param serviceBusSkuName string = 'Standard'
 param serviceBusTopicName string = 'order-fulfillment-events'
 param serviceBusMaxDeliveryCount int = 5
 
+// --- Day 25: Entra ID app auth — neither value is a secret (tenant ID and an app registration's
+// audience/client ID are public identifiers), so unlike aadAdminLogin/aadAdminObjectId above,
+// these have safe empty defaults: the app runs unauthenticated when they're unset (see
+// Program.cs) rather than every deploy needing an app registration to exist first.
+param entraTenantId string = ''
+param entraAudience string = ''
+
 resource resourceGroup 'Microsoft.Resources/resourceGroups@2025-04-01' = {
   name: resourceGroupName
   location: location
@@ -103,9 +110,10 @@ module api 'modules/api.bicep' = {
     existingEnvironmentResourceGroup: existingEnvironmentResourceGroup
     extraEnv: [
       {
-        // Matches ConnectionStrings:OrderFulfillment in appsettings.json — Ordering.Infrastructure
-        // still targets Sqlite today (see modules/sql.bicep's comment); this is provisioned ahead
-        // of that code change, not yet load-bearing.
+        // Matches ConnectionStrings:OrderFulfillment in appsettings.json — since Day 25,
+        // OrderingModule.cs actually switches to UseSqlServer when the connection string looks
+        // like this one ("Server=tcp:..."), so this is load-bearing now, not just provisioned
+        // ahead of the code.
         name: 'ConnectionStrings__OrderFulfillment'
         value: sql.outputs.sqlConnectionStringNoCredentials
       }
@@ -116,6 +124,15 @@ module api 'modules/api.bicep' = {
       {
         name: 'ServiceBus__Topic'
         value: serviceBus.outputs.topicName
+      }
+      {
+        // Neither of these is a secret — see the entraTenantId/entraAudience param comments.
+        name: 'Entra__TenantId'
+        value: entraTenantId
+      }
+      {
+        name: 'Entra__Audience'
+        value: entraAudience
       }
     ]
   }

@@ -21,8 +21,28 @@ public static class OrderingModule
 
     public static IServiceCollection AddOrderingModule(this IServiceCollection services, IConfiguration configuration)
     {
+        // Same connection string setting either way — which provider it needs decides itself
+        // from its shape. Azure SQL's is always "Server=tcp:...;Authentication=Active Directory
+        // Default;..." (see infra/modules/sql.bicep's sqlConnectionStringNoCredentials output);
+        // local dev's default (appsettings.json) is "Data Source=orderfulfillment.db". No
+        // password ever appears in either — Active Directory Default resolves through
+        // Microsoft.Data.SqlClient's own DefaultAzureCredential integration, using whichever
+        // identity is available (the Container App's managed identity when deployed, the
+        // developer's own `az login`/Visual Studio session locally).
+        var connectionString = configuration.GetConnectionString("OrderFulfillment");
+        var isAzureSql = connectionString?.Contains("Server=tcp:", StringComparison.OrdinalIgnoreCase) == true;
+
         services.AddDbContext<OrderingDbContext>(options =>
-            options.UseSqlite(configuration.GetConnectionString("OrderFulfillment")));
+        {
+            if (isAzureSql)
+            {
+                options.UseSqlServer(connectionString);
+            }
+            else
+            {
+                options.UseSqlite(connectionString);
+            }
+        });
 
         services.AddScoped<IOrderRepository, OrderRepository>();
 
