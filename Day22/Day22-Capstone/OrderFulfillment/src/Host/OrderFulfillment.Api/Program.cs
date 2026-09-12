@@ -1,5 +1,6 @@
 using Azure.Identity;
 using Azure.Messaging.ServiceBus;
+using Azure.Monitor.OpenTelemetry.AspNetCore;
 using BuildingBlocks.Domain;
 using BuildingBlocks.Infrastructure;
 using Inventory.Infrastructure;
@@ -7,6 +8,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Notifications.Infrastructure;
+using OpenTelemetry.Trace;
 using Ordering.Application;
 using Ordering.Infrastructure;
 using Payments.Infrastructure;
@@ -21,6 +23,33 @@ builder.Services.AddInventoryModule();
 builder.Services.AddPaymentsModule();
 builder.Services.AddShippingModule();
 builder.Services.AddNotificationsModule();
+
+// --- Day 26: OpenTelemetry -> Application Insights ---
+// Enabled only when a connection string is configured (same fail-open-to-"no telemetry" pattern
+// as QuotesApi's own Program.cs) — the app runs identically with or without Azure configured,
+// never refusing to start over an observability setting. AddSource(OutboxTelemetry.SourceName) is
+// what makes OutboxProcessor's re-parented activities (BuildingBlocks.Infrastructure/
+// OutboxProcessor.cs) actually get sampled and exported — without it those Activity objects are
+// still created (they're just plain .NET objects either way) but the OTel SDK ignores them.
+var azureMonitorConnectionString = builder.Configuration["APPLICATIONINSIGHTS_CONNECTION_STRING"];
+
+var otelBuilder = builder.Services.AddOpenTelemetry();
+
+if (!string.IsNullOrWhiteSpace(azureMonitorConnectionString))
+{
+    otelBuilder.UseAzureMonitor(options => options.ConnectionString = azureMonitorConnectionString);
+}
+
+// AddEntityFrameworkCoreInstrumentation() has to be explicit — verified by testing this locally
+// against real Application Insights: the Azure Monitor Distro's UseAzureMonitor() auto-enables
+// ASP.NET Core/HttpClient instrumentation reflectively, but NOT EF Core's, even though the
+// package is referenced. Without this line the `dependencies` table stays completely empty —
+// every SQL call the API makes is invisible, silently, with no error anywhere. QuotesApi's own
+// Program.cs has the exact same gap, never caught because it was never tested against a live
+// Application Insights resource either.
+otelBuilder.WithTracing(tracing => tracing
+    .AddSource(OutboxTelemetry.SourceName)
+    .AddEntityFrameworkCoreInstrumentation());
 
 // --- Day 25: Entra ID for app auth ---
 // Only two settings needed, and neither is a secret: a tenant ID and an audience (the app

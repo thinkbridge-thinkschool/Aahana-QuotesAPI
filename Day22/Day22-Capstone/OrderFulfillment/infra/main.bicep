@@ -46,6 +46,10 @@ param serviceBusMaxDeliveryCount int = 5
 param entraTenantId string = ''
 param entraAudience string = ''
 
+// --- Day 26: OpenTelemetry -> Application Insights ---
+param errorRateThreshold int = 5
+param errorRateWindow string = 'PT5M'
+
 resource resourceGroup 'Microsoft.Resources/resourceGroups@2025-04-01' = {
   name: resourceGroupName
   location: location
@@ -62,6 +66,8 @@ var uniqueSuffix = uniqueString(subscription().subscriptionId, resourceGroupName
 var registryName = 'orderfulfillmentacr${uniqueSuffix}'
 var sqlServerName = 'orderfulfillment-sql-${environment}-${uniqueSuffix}'
 var serviceBusNamespaceName = 'orderfulfillment-sb-${environment}-${uniqueSuffix}'
+var logAnalyticsWorkspaceName = 'orderfulfillment-logs-${environment}'
+var appInsightsName = 'orderfulfillment-appinsights-${environment}'
 
 module sql 'modules/sql.bicep' = {
   name: 'orderfulfillment-sql'
@@ -86,6 +92,18 @@ module serviceBus 'modules/servicebus.bicep' = {
     topicName: serviceBusTopicName
     skuName: serviceBusSkuName
     maxDeliveryCount: serviceBusMaxDeliveryCount
+  }
+}
+
+module appInsights 'modules/appinsights.bicep' = {
+  name: 'orderfulfillment-appinsights'
+  scope: resourceGroup
+  params: {
+    location: location
+    logAnalyticsWorkspaceName: logAnalyticsWorkspaceName
+    appInsightsName: appInsightsName
+    errorRateThreshold: errorRateThreshold
+    errorRateWindow: errorRateWindow
   }
 }
 
@@ -134,6 +152,10 @@ module api 'modules/api.bicep' = {
         name: 'Entra__Audience'
         value: entraAudience
       }
+      {
+        name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
+        value: appInsights.outputs.connectionString
+      }
     ]
   }
 }
@@ -150,6 +172,7 @@ module serviceBusAccess 'modules/servicebus-access.bicep' = {
 output containerAppFqdn string = api.outputs.containerAppFqdn
 output registryLoginServer string = api.outputs.registryLoginServer
 output targetImage string = api.outputs.targetImage
+output appInsightsName string = appInsights.outputs.appInsightsName
 output sqlServerFqdn string = sql.outputs.sqlServerFqdn
 output serviceBusNamespaceFqdn string = serviceBus.outputs.serviceBusNamespaceFqdn
 output serviceBusSubscriptionNames array = serviceBus.outputs.subscriptionNames
