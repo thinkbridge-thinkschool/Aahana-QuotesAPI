@@ -14,6 +14,10 @@ param containerAppEnvName string = 'orderfulfillment-env-dev'
 param containerAppName string = 'orderfulfillment-api'
 param containerImageTag string = '0.1.0'
 
+@description('This subscription (Azure for Students) caps Container Apps managed environments at one per region — QuotesApi already owns it in Central India. Real deployment surfaced this (what-if/validate did not); when true, the api module joins that existing environment instead of creating a second one.')
+param useExistingEnvironment bool = false
+param existingEnvironmentResourceGroup string = ''
+
 // --- API sizing (differs per environment — see main.dev.bicepparam / main.prod.bicepparam) ---
 param containerAppCpu string = '0.5'
 param containerAppMemory string = '1Gi'
@@ -95,6 +99,8 @@ module api 'modules/api.bicep' = {
     minReplicas: minReplicas
     maxReplicas: maxReplicas
     registrySku: registrySku
+    useExistingEnvironment: useExistingEnvironment
+    existingEnvironmentResourceGroup: existingEnvironmentResourceGroup
     extraEnv: [
       {
         // Matches ConnectionStrings:OrderFulfillment in appsettings.json — Ordering.Infrastructure

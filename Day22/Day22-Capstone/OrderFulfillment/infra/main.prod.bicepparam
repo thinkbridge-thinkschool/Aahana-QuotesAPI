@@ -3,7 +3,12 @@ using 'main.bicep'
 param environment = 'prod'
 param location = 'centralindia'
 param resourceGroupName = 'orderfulfillment-rg-prod'
-param containerAppEnvName = 'orderfulfillment-env-prod'
+// Not a new environment — this subscription allows only one Container Apps environment per
+// region, shared with QuotesApi and capstone-dev alike. See main.bicep's useExistingEnvironment
+// comment. Isolation from dev/QuotesApi is by Container App name, not environment boundary.
+param containerAppEnvName = 'thinkschool-env'
+param useExistingEnvironment = true
+param existingEnvironmentResourceGroup = 'thinkschool-rg'
 param containerAppName = 'orderfulfillment-api'
 param containerImageTag = readEnvironmentVariable('CONTAINER_IMAGE_TAG')
 

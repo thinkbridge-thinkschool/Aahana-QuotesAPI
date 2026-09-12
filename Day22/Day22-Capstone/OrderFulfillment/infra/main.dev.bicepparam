@@ -3,7 +3,11 @@ using 'main.bicep'
 param environment = 'dev'
 param location = 'centralindia'
 param resourceGroupName = 'orderfulfillment-rg-dev'
-param containerAppEnvName = 'orderfulfillment-env-dev'
+// Not a new environment — this subscription allows only one Container Apps environment per
+// region, and QuotesApi already owns it. See main.bicep's useExistingEnvironment comment.
+param containerAppEnvName = 'thinkschool-env'
+param useExistingEnvironment = true
+param existingEnvironmentResourceGroup = 'thinkschool-rg'
 param containerAppName = 'orderfulfillment-api-dev'
 param containerImageTag = readEnvironmentVariable('CONTAINER_IMAGE_TAG', 'dev-latest')
 

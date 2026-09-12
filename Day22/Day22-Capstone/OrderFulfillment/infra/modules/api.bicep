@@ -15,6 +15,12 @@ param containerImageTag string
 @description('Globally-unique name for the Azure Container Registry.')
 param registryName string
 
+@description('This subscription allows only one Container Apps managed environment per region, and QuotesApi already occupies it in Central India (MaxNumberOfRegionalEnvironmentsInSubExceeded — only surfaced by a real deployment, not by what-if/validate). When true, reuse that existing environment instead of creating a new one; isolation between QuotesApi, capstone-dev, and capstone-prod then happens at the Container App level (separate apps/revisions), not the environment level.')
+param useExistingEnvironment bool = false
+
+@description('Resource group of the existing environment — only read when useExistingEnvironment is true.')
+param existingEnvironmentResourceGroup string = ''
+
 @description('Extra environment variables the composition root wires in — SQL/Service Bus connection info from the other modules. Kept generic so this module never needs to know those modules exist.')
 param extraEnv array = []
 
@@ -36,7 +42,7 @@ param registrySku string = 'Basic'
 // active. Same trick used by the QuotesApi infra this module was modeled on.
 var bootstrapImage = 'mcr.microsoft.com/dotnet/samples:aspnetapp'
 
-resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
+resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2023-09-01' = if (!useExistingEnvironment) {
   name: '${environmentName}-logs'
   location: location
   properties: {
@@ -50,19 +56,28 @@ resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
   }
 }
 
-resource containerAppEnvironment 'Microsoft.App/managedEnvironments@2025-01-01' = {
+resource containerAppEnvironment 'Microsoft.App/managedEnvironments@2025-01-01' = if (!useExistingEnvironment) {
   name: environmentName
   location: location
   properties: {
     appLogsConfiguration: {
       destination: 'log-analytics'
       logAnalyticsConfiguration: {
-        customerId: logAnalytics.properties.customerId
-        sharedKey: logAnalytics.listKeys().primarySharedKey
+        customerId: logAnalytics!.properties.customerId
+        sharedKey: logAnalytics!.listKeys().primarySharedKey
       }
     }
   }
 }
+
+// Cross-resource-group reference — no properties of QuotesApi's environment are read or
+// written beyond its resource id, which is all a Container App needs to join it.
+resource existingEnvironment 'Microsoft.App/managedEnvironments@2025-01-01' existing = if (useExistingEnvironment) {
+  name: environmentName
+  scope: resourceGroup(existingEnvironmentResourceGroup)
+}
+
+var environmentId = useExistingEnvironment ? existingEnvironment.id : containerAppEnvironment.id
 
 resource registry 'Microsoft.ContainerRegistry/registries@2023-11-01-preview' = {
   name: registryName
@@ -82,7 +97,7 @@ resource containerApp 'Microsoft.App/containerApps@2025-01-01' = {
     type: 'SystemAssigned'
   }
   properties: {
-    managedEnvironmentId: containerAppEnvironment.id
+    managedEnvironmentId: environmentId
     configuration: {
       ingress: {
         external: true

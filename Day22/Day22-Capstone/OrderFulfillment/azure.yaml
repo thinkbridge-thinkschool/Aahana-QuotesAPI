@@ -1,0 +1,15 @@
+name: orderfulfillment-capstone
+metadata:
+  template: azd-init
+
+# infra/main.bicep is subscription-scope and already existed from Day 23 — azd provisions
+# against it as-is via infra/main.parameters.json, it doesn't need its own copy of the template.
+infra:
+  path: infra
+  module: main
+
+services:
+  orderfulfillment-api:
+    project: ./src/Host/OrderFulfillment.Api
+    language: dotnet
+    host: containerapp

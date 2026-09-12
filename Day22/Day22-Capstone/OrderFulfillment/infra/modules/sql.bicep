@@ -48,9 +48,11 @@ resource sqlServer 'Microsoft.Sql/servers@2023-08-01-preview' = {
   }
 }
 
+// Named without "Windows" — Azure rejects that as a reserved word in a resource name (only
+// caught by a real deployment; az deployment sub validate/what-if did not flag it).
 resource allowAzureServicesRule 'Microsoft.Sql/servers/firewallRules@2023-08-01-preview' = if (allowAzureServices) {
   parent: sqlServer
-  name: 'AllowAllWindowsAzureIps'
+  name: 'AllowAllAzureServicesIps'
   properties: {
     startIpAddress: '0.0.0.0'
     endIpAddress: '0.0.0.0'

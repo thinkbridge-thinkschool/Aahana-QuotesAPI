@@ -1,0 +1,24 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "environment": { "value": "${ENVIRONMENT}" },
+    "location": { "value": "${AZURE_LOCATION}" },
+    "resourceGroupName": { "value": "${RESOURCE_GROUP_NAME}" },
+    "containerAppEnvName": { "value": "${CONTAINER_APP_ENV_NAME}" },
+    "useExistingEnvironment": { "value": true },
+    "existingEnvironmentResourceGroup": { "value": "${EXISTING_ENV_RESOURCE_GROUP}" },
+    "containerAppName": { "value": "${CONTAINER_APP_NAME}" },
+    "containerImageTag": { "value": "${CONTAINER_IMAGE_TAG}" },
+    "aadAdminLogin": { "value": "${AAD_ADMIN_LOGIN}" },
+    "aadAdminObjectId": { "value": "${AAD_ADMIN_OBJECT_ID}" },
+    "containerAppCpu": { "value": "${CONTAINER_APP_CPU}" },
+    "containerAppMemory": { "value": "${CONTAINER_APP_MEMORY}" },
+    "minReplicas": { "value": "${MIN_REPLICAS}" },
+    "maxReplicas": { "value": "${MAX_REPLICAS}" },
+    "registrySku": { "value": "${REGISTRY_SKU}" },
+    "sqlSkuName": { "value": "${SQL_SKU_NAME}" },
+    "sqlSkuTier": { "value": "${SQL_SKU_TIER}" },
+    "serviceBusMaxDeliveryCount": { "value": "${SERVICE_BUS_MAX_DELIVERY_COUNT}" }
+  }
+}
