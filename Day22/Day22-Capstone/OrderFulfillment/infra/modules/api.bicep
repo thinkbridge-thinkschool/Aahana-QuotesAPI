@@ -24,6 +24,18 @@ param existingEnvironmentResourceGroup string = ''
 @description('Extra environment variables the composition root wires in — SQL/Service Bus connection info from the other modules. Kept generic so this module never needs to know those modules exist.')
 param extraEnv array = []
 
+@description('''
+Day 29: without this, the deployed app has no ASPNETCORE_ENVIRONMENT at all, which ASP.NET Core
+treats as "Production" — and Day 27's fail-closed auth check (Program.cs) then refuses to start
+at all when no real Entra App Registration is configured yet (Day 25's still-open gap), which is
+exactly what happened on this dev deployment's first real run. "Development" here is not a
+security downgrade of that check; it is the one value the check itself already treats as the
+sanctioned place to run unauthenticated (see Program.cs's own comment) — dev's bicepparam sets
+this to Development for exactly that reason, prod's leaves the default Production untouched, so
+Day 27's hardening stays fully in force there until a real App Registration exists.
+''')
+param aspnetCoreEnvironment string = 'Production'
+
 @description('vCPU allocated to each replica. Must be one of the Container Apps-supported increments (0.25, 0.5, 0.75, 1, ...).')
 param containerAppCpu string = '0.5'
 
@@ -35,12 +47,33 @@ param maxReplicas int = 3
 @description('Basic is sufficient for dev; prod should move to Standard once image geo-replication or higher throughput is needed.')
 param registrySku string = 'Basic'
 
-// The container app's first revision is created before the AcrPull role assignment below
-// (which depends on the app's own identity) can exist or propagate, so it can't pull a
-// private-registry image on its very first revision. Bootstrap with a public placeholder
-// image; a follow-up `az containerapp update` swaps in the real ACR image once AcrPull is
-// active. Same trick used by the QuotesApi infra this module was modeled on.
+@description('''
+Day 29 fix for a real deadlock hit on a live deploy, not a hypothetical: declaring the ACR
+registries entry unconditionally in the SAME deployment as the Container App creates a genuine
+circular dependency, not just a "first revision can't pull a private image yet" inconvenience.
+The Container Apps control plane validates every declared registry credential as part of
+provisioning a revision — even one using a public image that never touches that registry — and
+kept retrying a 401 (no AcrPull grant exists yet) for the full ~20-minute operation timeout,
+so the Container App's own deployment never reached a terminal "Succeeded" state. Because
+acrPullRoleAssignment below has an implicit dependency on containerApp (it reads
+containerApp.identity.principalId), ARM never even attempted that role assignment once its
+dependency's operation failed — so AcrPull could never be granted, which is exactly what was
+causing the 401 in the first place. A real, self-reinforcing deadlock, confirmed live: granting
+AcrPull to the already-created identity by hand, completely outside this template, is what
+finally let the stuck Container App provision.
+
+The fix: keep `registries` empty (and the image on the public bootstrap) until this is explicitly
+true. Phase 1 (this param false, the default) — deploy with no registries declared at all, so
+there is nothing for the platform to validate and the Container App reaches Succeeded, at which
+point acrPullRoleAssignment finally runs. Phase 2 (this param true, after phase 1 has succeeded
+and a real image has been pushed) — a second deployment adds the registries entry and swaps in
+the real image, now that AcrPull genuinely exists before it's needed.
+''')
+param acrPullGranted bool = false
+
+// See acrPullGranted above for why this is only used until that phase-2 redeploy happens.
 var bootstrapImage = 'mcr.microsoft.com/dotnet/samples:aspnetapp'
+var realImage = '${registry.properties.loginServer}/${containerAppName}:${containerImageTag}'
 
 resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2023-09-01' = if (!useExistingEnvironment) {
   name: '${environmentName}-logs'
@@ -104,18 +137,20 @@ resource containerApp 'Microsoft.App/containerApps@2025-01-01' = {
         targetPort: 8080
         transport: 'auto'
       }
-      registries: [
-        {
-          server: registry.properties.loginServer
-          identity: 'system'
-        }
-      ]
+      registries: acrPullGranted
+        ? [
+            {
+              server: registry.properties.loginServer
+              identity: 'system'
+            }
+          ]
+        : []
     }
     template: {
       containers: [
         {
           name: containerAppName
-          image: bootstrapImage
+          image: acrPullGranted ? realImage : bootstrapImage
           resources: {
             cpu: json(containerAppCpu)
             memory: containerAppMemory
@@ -125,6 +160,10 @@ resource containerApp 'Microsoft.App/containerApps@2025-01-01' = {
               {
                 name: 'ASPNETCORE_URLS'
                 value: 'http://+:8080'
+              }
+              {
+                name: 'ASPNETCORE_ENVIRONMENT'
+                value: aspnetCoreEnvironment
               }
             ],
             extraEnv

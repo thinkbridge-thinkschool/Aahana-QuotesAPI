@@ -11,6 +11,12 @@ param existingEnvironmentResourceGroup = 'thinkschool-rg'
 param containerAppName = 'orderfulfillment-api-dev'
 param containerImageTag = readEnvironmentVariable('CONTAINER_IMAGE_TAG', 'dev-latest')
 
+// Day 29: no real Entra App Registration exists yet (Day 25's open gap) — Development is the one
+// value Program.cs's own fail-closed check already treats as sanctioned to run unauthenticated.
+// Confirmed live: without this, the container crashes on startup outside Development with
+// "Entra:TenantId and Entra:Audience must be configured outside Development".
+param aspnetCoreEnvironment = 'Development'
+
 // Per-person identity never lives in source control, dev or prod — pulled from the deployer's
 // shell/CI environment instead. See DESIGN.md, "Why nothing here is a literal".
 param aadAdminLogin = readEnvironmentVariable('AAD_ADMIN_LOGIN')
