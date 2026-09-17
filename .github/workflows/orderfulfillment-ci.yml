@@ -1,0 +1,69 @@
+name: OrderFulfillment CI
+
+on:
+  push:
+    branches:
+      - '**'
+    paths:
+      - 'Day22/Day22-Capstone/OrderFulfillment/**'
+      - '.github/workflows/orderfulfillment-ci.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'Day22/Day22-Capstone/OrderFulfillment/**'
+      - '.github/workflows/orderfulfillment-ci.yml'
+
+defaults:
+  run:
+    working-directory: Day22/Day22-Capstone/OrderFulfillment
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore
+        run: dotnet restore OrderFulfillment.slnx
+
+      - name: Build
+        run: dotnet build OrderFulfillment.slnx --no-restore
+
+      - name: Unit tests (Ordering.Domain)
+        run: >
+          dotnet test tests/Ordering.Domain.Tests/Ordering.Domain.Tests.csproj
+          --no-build
+          --logger "trx;LogFileName=unit-tests.trx"
+          --results-directory ./TestResults/unit
+
+      - name: Integration + E2E tests (WebApplicationFactory)
+        run: >
+          dotnet test tests/OrderFulfillment.Api.IntegrationTests/OrderFulfillment.Api.IntegrationTests.csproj
+          --no-build
+          --logger "trx;LogFileName=integration-tests.trx"
+          --results-directory ./TestResults/integration
+
+      - name: Security re-check — no known-vulnerable packages
+        run: dotnet list src/Host/OrderFulfillment.Api/OrderFulfillment.Api.csproj package --vulnerable --include-transitive
+
+      - name: Validate Bicep
+        run: |
+          az bicep install
+          az bicep build --file infra/main.bicep --stdout > /dev/null
+        shell: bash
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: orderfulfillment-test-results
+          path: Day22/Day22-Capstone/OrderFulfillment/**/TestResults/**/*.trx
+          if-no-files-found: warn
