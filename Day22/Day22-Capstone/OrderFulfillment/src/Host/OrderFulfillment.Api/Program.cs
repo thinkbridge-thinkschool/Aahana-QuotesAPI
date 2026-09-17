@@ -207,7 +207,22 @@ if (entraConfigured)
 // migration is added.
 using (var scope = app.Services.CreateScope())
 {
-    scope.ServiceProvider.GetRequiredService<OrderingDbContext>().Database.EnsureCreated();
+    var db = scope.ServiceProvider.GetRequiredService<OrderingDbContext>();
+    db.Database.EnsureCreated();
+
+    // Day 31 perf pass: SQLite's default rollback-journal mode fsyncs on every commit and blocks
+    // readers during a write. WAL mode lets PlaceOrderHandler's single INSERT-and-commit (the
+    // hottest path in this app) skip most of that — readers (OutboxProcessor's poll, health
+    // checks) no longer wait behind it. synchronous=NORMAL is the documented, safe pairing for
+    // WAL (fsyncs at checkpoints, not every transaction) — durable against an app crash, not
+    // against the OS itself going down mid-checkpoint, which is an acceptable trade for a
+    // kickoff-scope local dev database. No-op against Azure SQL (a real PRAGMA there would just
+    // error), so this only ever runs for the SQLite path.
+    if (db.Database.IsSqlite())
+    {
+        db.Database.ExecuteSqlRaw("PRAGMA journal_mode=WAL;");
+        db.Database.ExecuteSqlRaw("PRAGMA synchronous=NORMAL;");
+    }
 }
 
 app.UseExceptionHandler(errorApp => errorApp.Run(async context =>
