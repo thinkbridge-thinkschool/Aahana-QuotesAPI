@@ -48,9 +48,20 @@ public sealed class Order : AggregateRoot<Guid>
         return order;
     }
 
-    /// <summary>Called by Ordering.Application when Inventory reports the reservation succeeded.</summary>
+    /// <summary>
+    /// Called by Ordering.Application when Inventory reports the reservation succeeded.
+    /// Idempotent against redelivery of the *same* StockReserved event (Day 28 design review):
+    /// the outbox gives at-least-once delivery, so a consumer that crashes after processing but
+    /// before acknowledging will see this called again for an order already Confirmed or further
+    /// along — that redelivery is a no-op, not an error. A genuinely conflicting call (e.g. the
+    /// order was Cancelled by a different event) still throws; only "this exact transition already
+    /// happened" is treated as success.
+    /// </summary>
     public void Confirm()
     {
+        if (Status is OrderStatus.Confirmed or OrderStatus.PaymentReceived or OrderStatus.Shipped)
+            return;
+
         EnsureNotTerminal();
         if (Status != OrderStatus.Pending)
             throw new DomainInvariantException($"Cannot confirm an order in status {Status}.");
@@ -59,9 +70,12 @@ public sealed class Order : AggregateRoot<Guid>
         Raise(new OrderConfirmed(Guid.NewGuid(), DateTimeOffset.UtcNow, Id));
     }
 
-    /// <summary>Called by Ordering.Application when Payments reports a captured payment.</summary>
+    /// <summary>Called by Ordering.Application when Payments reports a captured payment. Idempotent — see Confirm().</summary>
     public void MarkPaymentReceived()
     {
+        if (Status is OrderStatus.PaymentReceived or OrderStatus.Shipped)
+            return;
+
         EnsureNotTerminal();
         if (Status != OrderStatus.Confirmed)
             throw new DomainInvariantException($"Cannot mark payment received for an order in status {Status}.");
@@ -70,9 +84,12 @@ public sealed class Order : AggregateRoot<Guid>
         Raise(new OrderPaymentReceived(Guid.NewGuid(), DateTimeOffset.UtcNow, Id));
     }
 
-    /// <summary>Called by Ordering.Application when Shipping reports dispatch.</summary>
+    /// <summary>Called by Ordering.Application when Shipping reports dispatch. Idempotent — see Confirm().</summary>
     public void MarkShipped()
     {
+        if (Status == OrderStatus.Shipped)
+            return;
+
         if (Status != OrderStatus.PaymentReceived)
             throw new DomainInvariantException($"Cannot ship an order in status {Status}.");
 
@@ -83,10 +100,15 @@ public sealed class Order : AggregateRoot<Guid>
     /// <summary>
     /// Reachable from any pre-Shipped state: a failed stock reservation or a declined payment
     /// both cancel the order the same way, from wherever it currently sits in the pipeline.
+    /// Idempotent against redelivery — see Confirm(); a redelivered cancellation of an
+    /// already-Cancelled order is a no-op, not an error.
     /// </summary>
     public void Cancel(string reason)
     {
-        if (Status is OrderStatus.Shipped or OrderStatus.Cancelled)
+        if (Status == OrderStatus.Cancelled)
+            return;
+
+        if (Status is OrderStatus.Shipped)
             throw new DomainInvariantException($"Cannot cancel an order in status {Status}.");
 
         Status = OrderStatus.Cancelled;
