@@ -1,0 +1,12 @@
+**/bin/
+**/obj/
+tests/
+infra/
+docs/
+.azure/
+*.md
+*.ps1
+*.db
+*.db-shm
+*.db-wal
+.git/
