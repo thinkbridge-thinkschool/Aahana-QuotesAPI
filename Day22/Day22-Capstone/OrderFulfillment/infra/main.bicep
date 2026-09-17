@@ -18,6 +18,12 @@ param containerImageTag string = '0.1.0'
 param useExistingEnvironment bool = false
 param existingEnvironmentResourceGroup string = ''
 
+@description('Day 29: false deploys with no ACR registry declared and the public bootstrap image, which is what lets the Container App actually reach a Succeeded provisioning state on its first deploy — see modules/api.bicep for the deadlock this avoids. true (on a second, later deployment, once that first one has succeeded and a real image has been pushed) swaps in the registry + the real image. Day 30 review: no default on purpose — every deployment has to state its intent, rather than silently falling back to the bootstrap image (with registries: []) if this is ever accidentally omitted from a pipeline/CLI invocation.')
+param acrPullGranted bool
+
+@description('Day 29/30: see modules/api.bicep — a narrow, auth-only escape hatch for environments with no real Entra App Registration yet (Day 25s still-open gap), checked directly by Program.cs, not tied to ASPNETCORE_ENVIRONMENT. dev.bicepparam sets this true; prod.bicepparam leaves the default false, so Day 27s fail-closed auth check stays fully in force there.')
+param allowUnauthenticated bool = false
+
 // --- API sizing (differs per environment — see main.dev.bicepparam / main.prod.bicepparam) ---
 param containerAppCpu string = '0.5'
 param containerAppMemory string = '1Gi'
@@ -150,6 +156,8 @@ module api 'modules/api.bicep' = {
     registrySku: registrySku
     useExistingEnvironment: useExistingEnvironment
     existingEnvironmentResourceGroup: existingEnvironmentResourceGroup
+    acrPullGranted: acrPullGranted
+    allowUnauthenticated: allowUnauthenticated
     extraEnv: [
       {
         // Matches ConnectionStrings:OrderFulfillment in appsettings.json — since Day 25,

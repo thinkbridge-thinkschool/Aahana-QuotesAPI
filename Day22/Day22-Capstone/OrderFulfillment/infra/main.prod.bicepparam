@@ -12,6 +12,13 @@ param existingEnvironmentResourceGroup = 'thinkschool-rg'
 param containerAppName = 'orderfulfillment-api'
 param containerImageTag = readEnvironmentVariable('CONTAINER_IMAGE_TAG')
 
+// Day 30 review: acrPullGranted has no default in main.bicep on purpose (see main.dev.bicepparam's
+// comment) — false is correct for prod's first-ever deploy too; promote with a one-time
+// --parameters acrPullGranted=true override once that first deploy has succeeded and a real image
+// exists. allowUnauthenticated is left at main.bicep's default (false) deliberately — Day 27's
+// fail-closed auth check stays fully in force in prod until a real Entra App Registration exists.
+param acrPullGranted = false
+
 // Per-person identity never lives in source control, dev or prod — pulled from the deployer's
 // shell/CI environment instead. See DESIGN.md, "Why nothing here is a literal".
 param aadAdminLogin = readEnvironmentVariable('AAD_ADMIN_LOGIN')

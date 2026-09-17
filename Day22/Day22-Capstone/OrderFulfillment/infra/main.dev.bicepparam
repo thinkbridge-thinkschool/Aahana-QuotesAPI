@@ -11,6 +11,21 @@ param existingEnvironmentResourceGroup = 'thinkschool-rg'
 param containerAppName = 'orderfulfillment-api-dev'
 param containerImageTag = readEnvironmentVariable('CONTAINER_IMAGE_TAG', 'dev-latest')
 
+// Day 29: no real Entra App Registration exists yet (Day 25's open gap). Confirmed live: without
+// some form of this, the container crashes on startup with "Entra:TenantId and Entra:Audience
+// must be configured...". Day 30 review: originally ASPNETCORE_ENVIRONMENT=Development (too broad
+// a lever — see main.bicep's allowUnauthenticated comment); this is the narrower, auth-only fix.
+param allowUnauthenticated = true
+
+// Day 30 review: acrPullGranted lost its default in main.bicep specifically so this can't be
+// silently omitted. false here is deliberate — it's what a *fresh* dev environment needs for its
+// first deploy to succeed at all (see modules/api.bicep's deadlock comment). Promoting an
+// already-bootstrapped environment to the real image is a one-time manual
+// `az deployment sub create ... --parameters acrPullGranted=true` an operator runs once, not
+// something this baseline file should flip permanently (that would recreate the same deadlock the
+// next time this environment is torn down and recreated from scratch).
+param acrPullGranted = false
+
 // Per-person identity never lives in source control, dev or prod — pulled from the deployer's
 // shell/CI environment instead. See DESIGN.md, "Why nothing here is a literal".
 param aadAdminLogin = readEnvironmentVariable('AAD_ADMIN_LOGIN')
