@@ -35,6 +35,7 @@
     <Project Path="src/Modules/Shipping/Shipping.Infrastructure/Shipping.Infrastructure.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/OrderFulfillment.Api.IntegrationTests/OrderFulfillment.Api.IntegrationTests.csproj" />
     <Project Path="tests/Ordering.Domain.Tests/Ordering.Domain.Tests.csproj" />
   </Folder>
 </Solution>

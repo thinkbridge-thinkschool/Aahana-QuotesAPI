@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <ItemGroup>
     <ProjectReference Include="..\..\BuildingBlocks\BuildingBlocks.Infrastructure\BuildingBlocks.Infrastructure.csproj" />
@@ -42,6 +42,13 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>323e16e1-f80e-4bb9-a0fe-3bc6deb55c31</UserSecretsId>
   </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Day 31: top-level statements generate an internal Program class — WebApplicationFactory
+         needs it visible to the test assembly it's declared in. -->
+    <InternalsVisibleTo Include="OrderFulfillment.Api.IntegrationTests" />
+  </ItemGroup>
 
 </Project>
