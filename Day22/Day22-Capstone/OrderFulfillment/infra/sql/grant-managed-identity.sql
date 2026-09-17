@@ -33,8 +33,16 @@ EXEC sp_executesql @sql, N'@name sysname', @name = @managedIdentityName;
 -- Least privilege: read + write the app's own tables, nothing else (not db_owner, not schema
 -- changes). Ordering.Infrastructure's own EF Core migrations/EnsureCreated still need to run as
 -- the Entra admin, not this identity — this grant is for the running app, not for deploying it.
-EXEC sp_executesql N'ALTER ROLE db_datareader ADD MEMBER [' + @managedIdentityName + N']';
-EXEC sp_executesql N'ALTER ROLE db_datawriter ADD MEMBER [' + @managedIdentityName + N']';
+--
+-- Day 29: assign the concatenation to @sql first, same as the CREATE USER block above, rather
+-- than inlining it as EXEC sp_executesql's first argument — confirmed live, EXEC's argument-list
+-- grammar doesn't accept a bare "literal + variable + literal" expression there ("Incorrect
+-- syntax near '+'"), unlike a general expression context. This script had never actually been
+-- run against a live database before today (Day 25 wrote it, Day 25's own gap said so).
+SET @sql = N'ALTER ROLE db_datareader ADD MEMBER [' + @managedIdentityName + N']';
+EXEC sp_executesql @sql;
+SET @sql = N'ALTER ROLE db_datawriter ADD MEMBER [' + @managedIdentityName + N']';
+EXEC sp_executesql @sql;
 
 -- Verify: should return one row, with the roles above listed.
 SELECT
