@@ -63,8 +63,12 @@ public class ServiceBusSubscriptionProcessor(
         var handlerType = typeof(IIntegrationEventHandler<>).MakeGenericType(clrType);
 
         using var scope = serviceProvider.CreateScope();
-        var handlers = scope.ServiceProvider.GetServices(handlerType);
+        var handlers = scope.ServiceProvider.GetServices(handlerType).ToList();
         var method = handlerType.GetMethod(nameof(IIntegrationEventHandler<IntegrationEvent>.HandleAsync))!;
+
+        logger.LogInformation(
+            "[{Subscription}] received {EventType} (message {MessageId}) — {HandlerCount} handler(s) registered for {HandlerType}",
+            subscriptionName, clrType.Name, args.Message.MessageId, handlers.Count, handlerType.Name);
 
         foreach (var handler in handlers)
         {
