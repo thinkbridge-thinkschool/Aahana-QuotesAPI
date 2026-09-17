@@ -66,6 +66,11 @@ public class ServiceBusSubscriptionProcessor(
         var handlers = scope.ServiceProvider.GetServices(handlerType).ToList();
         var method = handlerType.GetMethod(nameof(IIntegrationEventHandler<IntegrationEvent>.HandleAsync))!;
 
+        // Day 30 review: kept at Information, not Debug, on purpose for now — the saga bug this is
+        // diagnosing is still open, and the default minimum log level in this app is Information,
+        // so Debug would make this signal invisible in Azure right when it's needed most. Real
+        // tracked cost, not ignored: revisit (drop to Debug, or remove) once that investigation
+        // concludes — this is not meant to be permanent per-message volume.
         logger.LogInformation(
             "[{Subscription}] received {EventType} (message {MessageId}) — {HandlerCount} handler(s) registered for {HandlerType}",
             subscriptionName, clrType.Name, args.Message.MessageId, handlers.Count, handlerType.Name);

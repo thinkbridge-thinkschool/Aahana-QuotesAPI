@@ -96,11 +96,24 @@ var entraConfigured = !string.IsNullOrEmpty(entraTenantId) && !string.IsNullOrEm
 // could plausibly run outside a developer's own machine. Refusing to start is the harden-closed
 // half of "harden the OpenAPI surface (auth...)" — a misconfigured deploy should fail loudly at
 // startup, not silently serve every endpoint to anyone.
-if (!entraConfigured && !builder.Environment.IsDevelopment())
+//
+// Day 30 review: this used to key off builder.Environment.IsDevelopment() alone. That's the right
+// call for a plain `dotnet run` with nothing configured, but it's the wrong lever for a deployed,
+// internet-facing Container App (ingress.external: true) that has no real Entra App Registration
+// yet — ASPNETCORE_ENVIRONMENT is a global switch (exception pages, DI scope validation, and
+// anything else keyed off it, today or in the future), not a scoped "auth is intentionally off"
+// flag. Auth:AllowUnauthenticated is that narrower flag: explicit, auth-specific, and doesn't
+// silently change any other environment-dependent behavior. Local dev keeps working exactly as
+// before (IsDevelopment() alone still allows it); the deployed dev slot now sets
+// Auth__AllowUnauthenticated=true directly instead of ASPNETCORE_ENVIRONMENT=Development.
+var allowUnauthenticated = builder.Environment.IsDevelopment()
+    || builder.Configuration.GetValue<bool>("Auth:AllowUnauthenticated");
+
+if (!entraConfigured && !allowUnauthenticated)
 {
     throw new InvalidOperationException(
-        "Entra:TenantId and Entra:Audience must be configured outside Development — refusing to " +
-        "start unauthenticated in a non-Development environment.");
+        "Entra:TenantId and Entra:Audience must be configured unless Auth:AllowUnauthenticated is " +
+        "explicitly set — refusing to start unauthenticated.");
 }
 
 if (entraConfigured)

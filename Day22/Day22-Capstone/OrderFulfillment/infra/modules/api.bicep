@@ -25,16 +25,19 @@ param existingEnvironmentResourceGroup string = ''
 param extraEnv array = []
 
 @description('''
-Day 29: without this, the deployed app has no ASPNETCORE_ENVIRONMENT at all, which ASP.NET Core
-treats as "Production" — and Day 27's fail-closed auth check (Program.cs) then refuses to start
-at all when no real Entra App Registration is configured yet (Day 25's still-open gap), which is
-exactly what happened on this dev deployment's first real run. "Development" here is not a
-security downgrade of that check; it is the one value the check itself already treats as the
-sanctioned place to run unauthenticated (see Program.cs's own comment) — dev's bicepparam sets
-this to Development for exactly that reason, prod's leaves the default Production untouched, so
-Day 27's hardening stays fully in force there until a real App Registration exists.
+Day 29: without something setting this, the deployed app has no ASPNETCORE_ENVIRONMENT at all
+(ASP.NET Core then treats it as "Production"), and Day 27's fail-closed auth check refuses to
+start at all when no real Entra App Registration is configured yet (Day 25's still-open gap) —
+exactly what happened on this dev deployment's first real run.
+
+Day 30 review: the first fix set ASPNETCORE_ENVIRONMENT=Development to satisfy that one check —
+correct in effect, but too broad a lever, since that variable is a global switch (exception
+pages, DI scope validation, anything else keyed off it today or added later), not a scoped
+"auth is intentionally off" flag. Replaced with allowUnauthenticated below, which maps to a
+narrow, auth-specific config value (Auth__AllowUnauthenticated) that Program.cs's auth gate
+checks directly — nothing else in the app changes behavior because of it.
 ''')
-param aspnetCoreEnvironment string = 'Production'
+param allowUnauthenticated bool = false
 
 @description('vCPU allocated to each replica. Must be one of the Container Apps-supported increments (0.25, 0.5, 0.75, 1, ...).')
 param containerAppCpu string = '0.5'
@@ -162,8 +165,8 @@ resource containerApp 'Microsoft.App/containerApps@2025-01-01' = {
                 value: 'http://+:8080'
               }
               {
-                name: 'ASPNETCORE_ENVIRONMENT'
-                value: aspnetCoreEnvironment
+                name: 'Auth__AllowUnauthenticated'
+                value: string(allowUnauthenticated)
               }
             ],
             extraEnv
