@@ -21,4 +21,11 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <!-- Day 32: a regression test for AzureServiceBusMessageBus.ShortEventTypeName lives in the
+         integration test project (it already references OrderFulfillment.Api, which references
+         this project transitively) rather than pulling in a new test project just for one method. -->
+    <InternalsVisibleTo Include="OrderFulfillment.Api.IntegrationTests" />
+  </ItemGroup>
+
 </Project>

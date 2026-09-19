@@ -118,16 +118,28 @@ resource subscriptions 'Microsoft.ServiceBus/namespaces/topics/subscriptions@202
 ]
 
 // Overrides each subscription's default (match-everything) rule with a SQL filter on a custom
-// "EventType" message property. Known gap, called out rather than hidden: nothing publishes
-// with that property set yet — OutboxIntegrationEventPublisher is still in-process
-// (InProcessMessageBus), not wired to this namespace. A future Azure Service Bus-backed
-// IMessageBus implementation needs to stamp ApplicationProperties["EventType"] =
-// event.GetType().Name on send for this filter to actually route anything; until then this
-// namespace is provisioned and validated, not yet load-bearing for the running app.
+// "EventType" message property, stamped by AzureServiceBusMessageBus.PublishAsync on every send.
+// Day 32: confirmed live that this rule resource had never actually been deployed to Azure at
+// all (every subscription's rule list came back empty — the successful servicebus.bicep deploy
+// predates this resource being added, and no full redeploy has completed since, because the
+// AcrPull deadlock blocked every azd provision attempt past this module). Also confirmed live,
+// while fixing that: a rule literally named "$Default" silently fails to persist through this
+// exact API path — `rule create` reports success and echoes the correct filter back, but an
+// immediate `rule show` for that same name returns "Rule does not exist", every time, no error
+// on the write side at all. A genuine, reproducible Service Bus/CLI quirk around that one
+// reserved name, not a typo — switched to a plain, non-reserved rule name instead, which
+// persists immediately and correctly. Also fixed the same session: the stamped value itself
+// didn't match this filter's short names at all (BuildingBlocks.Infrastructure/
+// AzureServiceBusMessageBus.cs was sending the full CLR type name, e.g.
+// "OrderPlacedIntegrationEvent", against a filter checking for "OrderPlaced") — three independent
+// things had to all be wrong at once for nothing to ever have worked, and all three were.
+// Verified live end-to-end after all three fixes: a real order placed against the deployed API
+// cascaded through the real saga (Confirmed -> PaymentReceived -> Shipped) over this exact
+// namespace, for the first time in this capstone's history.
 resource subscriptionFilters 'Microsoft.ServiceBus/namespaces/topics/subscriptions/rules@2022-01-01-preview' = [
   for i in range(0, length(subscriptionNames)): {
     parent: subscriptions[i]
-    name: '$Default'
+    name: 'EventTypeFilter'
     properties: {
       filterType: 'SqlFilter'
       sqlFilter: {
