@@ -65,6 +65,8 @@ public static class OrderingModule
             sp.GetRequiredKeyedService<IIntegrationEventPublisher>(ModuleName),
             sp.GetRequiredKeyedService<IUnitOfWork>(ModuleName)));
 
+        services.AddScoped<GetOrderHandler>();
+
         services.AddScoped<IIntegrationEventHandler<StockReservedIntegrationEvent>>(sp => new OnStockReserved(
             sp.GetRequiredService<IOrderRepository>(),
             sp.GetRequiredKeyedService<IIntegrationEventPublisher>(ModuleName),

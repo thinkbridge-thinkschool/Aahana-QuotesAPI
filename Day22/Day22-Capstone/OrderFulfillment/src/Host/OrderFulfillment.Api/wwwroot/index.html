@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Order Fulfillment — live demo</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header>
+    <h1>Order Fulfillment</h1>
+    <p class="subtitle">A modular monolith, placing a real order against whatever this process is currently wired to — local SQLite + in-process bus, or real Azure SQL + Service Bus, depending on how it's deployed.</p>
+  </header>
+
+  <main>
+    <section class="panel" aria-labelledby="place-order-heading">
+      <h2 id="place-order-heading">Place an order</h2>
+      <form id="order-form">
+        <label>
+          SKU
+          <select id="sku" name="sku">
+            <option value="WIDGET-1">WIDGET-1 (100 in stock)</option>
+            <option value="GADGET-9">GADGET-9 (5 in stock — try over-ordering this)</option>
+          </select>
+        </label>
+        <label>
+          Quantity
+          <input id="quantity" name="quantity" type="number" min="1" value="1" required />
+        </label>
+        <label>
+          Unit price (USD)
+          <input id="unitPrice" name="unitPrice" type="number" min="0.01" step="0.01" value="9.99" required />
+        </label>
+        <button type="submit" id="submit-btn">Place order</button>
+      </form>
+      <p id="form-error" class="error" role="alert" hidden></p>
+    </section>
+
+    <section class="panel" id="saga-panel" hidden aria-labelledby="saga-heading">
+      <h2 id="saga-heading">Order <code id="order-id"></code></h2>
+      <ol id="saga-steps" class="saga">
+        <li data-status="Pending">Pending</li>
+        <li data-status="Confirmed">Confirmed<span class="hint">Inventory reserved stock</span></li>
+        <li data-status="PaymentReceived">PaymentReceived<span class="hint">Payment captured</span></li>
+        <li data-status="Shipped">Shipped<span class="hint">Dispatched</span></li>
+      </ol>
+      <p id="saga-cancelled" class="cancelled" hidden>Cancelled — the saga compensated instead of confirming (usually insufficient stock).</p>
+      <p id="saga-note" class="hint"></p>
+    </section>
+
+    <section class="panel">
+      <h2>Order history <span class="hint">(this browser tab, this session)</span></h2>
+      <ul id="history"></ul>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

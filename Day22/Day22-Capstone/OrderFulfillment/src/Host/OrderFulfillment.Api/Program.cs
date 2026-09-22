@@ -186,13 +186,28 @@ var app = builder.Build();
 // Cheap, static, and exactly the kind of thing a ZAP baseline scan flags by default when they're
 // missing — nosniff and the frame-ancestors/no-referrer pair cost nothing and close three
 // passive-scan findings before the scan even runs (see DAY27-SECURITY-PASS.md's before/after).
+// CSP loosened from Day 27's original 'none' to 'self' now that this app also serves a same-
+// origin static demo page (wwwroot) that needs to load its own JS/CSS and fetch its own API —
+// still refuses every third-party origin and every inline <script>/<style>, which is what
+// actually matters for XSS: the demo's JS lives in its own .js file, not inline.
+//
+// First middleware in the pipeline, deliberately, not just conventionally: UseStaticFiles below
+// can short-circuit a request (serve the file, return, never call next()) — a Day 32 regression
+// found by the test suite when this was ordered the other way round: every static-file response,
+// including the demo page itself, was missing these headers entirely, because the code that adds
+// them never got a chance to run on the way back out.
 app.Use(async (context, next) =>
 {
     context.Response.Headers.Append("X-Content-Type-Options", "nosniff");
     context.Response.Headers.Append("Referrer-Policy", "no-referrer");
-    context.Response.Headers.Append("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'");
+    context.Response.Headers.Append("Content-Security-Policy", "default-src 'self'; frame-ancestors 'none'");
     await next();
 });
+
+// The demo UI (wwwroot/index.html) — same-origin static files only, no external CDN, so the CSP
+// above can stay locked to 'self' rather than needing any external allowlist.
+app.UseDefaultFiles();
+app.UseStaticFiles();
 
 app.UseRateLimiter();
 
@@ -239,8 +254,12 @@ app.MapOpenApi();
 // --- Day 27: /api/v1, not /api — URL-segment versioning. A route group prefix is enough at this
 // stage (one version, one consumer: nobody yet) without pulling in a versioning package whose
 // content-negotiation/deprecation-header machinery this API doesn't need yet.
-var ordersV1 = app.MapGroup("/api/v1/orders").RequireRateLimiting("orders");
+var ordersV1 = app.MapGroup("/api/v1/orders");
 
+// Rate limiting on the write endpoint only, not the whole group — the Day 27 threat this defends
+// against (STRIDE row 6, unrestricted resource consumption) is specifically about accepting
+// writes, and applying the same 20-req/10s budget to reads too would throttle the demo UI's own
+// status polling (one order in flight is ~1 GET/second while its saga runs).
 var placeOrder = ordersV1.MapPost("/", async (PlaceOrderCommand command, PlaceOrderHandler handler, CancellationToken ct) =>
 {
     // Domain invariants (Order.Place, OrderLine.Create, Money.Of) still run inside handler —
@@ -257,13 +276,26 @@ var placeOrder = ordersV1.MapPost("/", async (PlaceOrderCommand command, PlaceOr
 
     var orderId = await handler.HandleAsync(command, ct);
     return Results.Created($"/api/v1/orders/{orderId}", new { orderId });
-});
+}).RequireRateLimiting("orders");
 
 if (entraConfigured)
 {
     placeOrder.RequireAuthorization();
 }
 
-app.MapGet("/", () => "Order Fulfillment — Day 22 capstone kickoff");
+// The read side placeOrder's own Location header has been pointing at since Day 22 without
+// anything actually serving it. Also what the demo UI polls to show the saga advancing live.
+var getOrder = ordersV1.MapGet("/{orderId:guid}", async (Guid orderId, GetOrderHandler handler, CancellationToken ct) =>
+{
+    var order = await handler.HandleAsync(orderId, ct);
+    return order is null ? Results.NotFound() : Results.Ok(order);
+});
+
+if (entraConfigured)
+{
+    getOrder.RequireAuthorization();
+}
+
+app.MapGet("/api", () => "Order Fulfillment — Day 22 capstone kickoff");
 
 app.Run();

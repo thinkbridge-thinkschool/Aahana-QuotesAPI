@@ -41,6 +41,31 @@ public class PlaceOrderEndpointTests : IDisposable
     }
 
     [Fact]
+    public async Task PlaceOrder_ThenGetById_ReturnsTheOrderAndMatchesTheLocationHeader()
+    {
+        var postResponse = await _client.PostAsJsonAsync("/api/v1/orders", ValidOrder(sku: "WIDGET-1", quantity: 3));
+        var location = postResponse.Headers.Location!;
+
+        // The Location header has pointed at this route since Day 22 — this is the first test
+        // that actually follows it, rather than just asserting it exists.
+        var getResponse = await _client.GetAsync(location);
+        Assert.Equal(HttpStatusCode.OK, getResponse.StatusCode);
+
+        var order = await getResponse.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("Pending", order.GetProperty("status").GetString());
+        Assert.Equal(1, order.GetProperty("lines").GetArrayLength());
+        Assert.Equal(3, order.GetProperty("lines")[0].GetProperty("quantity").GetInt32());
+    }
+
+    [Fact]
+    public async Task GetOrder_ForAnUnknownId_Returns404()
+    {
+        var response = await _client.GetAsync($"/api/v1/orders/{Guid.NewGuid()}");
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
     public async Task PlaceOrder_WithNoLines_Returns400NotServerError()
     {
         var response = await _client.PostAsJsonAsync("/api/v1/orders", new
@@ -95,11 +120,25 @@ public class PlaceOrderEndpointTests : IDisposable
     [Fact]
     public async Task Response_CarriesTheSecurityHeadersFromDay27()
     {
-        var response = await _client.GetAsync("/");
+        var response = await _client.GetAsync("/api");
 
         Assert.Equal("nosniff", GetHeader(response, "X-Content-Type-Options"));
         Assert.Equal("no-referrer", GetHeader(response, "Referrer-Policy"));
-        Assert.Contains("default-src 'none'", GetHeader(response, "Content-Security-Policy"));
+        // Day 32: loosened from 'none' to 'self' once this app started serving the wwwroot demo
+        // page — still refuses every third-party origin and every inline script/style.
+        Assert.Contains("default-src 'self'", GetHeader(response, "Content-Security-Policy"));
+    }
+
+    [Fact]
+    public async Task DemoPage_AlsoCarriesTheSecurityHeaders()
+    {
+        // The regression this test exists to catch: UseStaticFiles can short-circuit a request
+        // (serve the file, return, never call next()) — ordering the header middleware after it
+        // meant every static-file response, including this one, silently skipped the headers
+        // entirely. Caught by this exact test the same session the demo page was added.
+        var response = await _client.GetAsync("/");
+
+        Assert.Equal("nosniff", GetHeader(response, "X-Content-Type-Options"));
     }
 
     private static string? GetHeader(HttpResponseMessage response, string name) =>
