@@ -108,9 +108,12 @@ function renderStatus(status) {
   }
 
   const currentIndex = STAGES.indexOf(status);
+  const isTerminal = status === "Shipped"; // nothing comes after this — settled, not "still working"
+
   for (const li of sagaSteps.children) {
     const stepIndex = STAGES.indexOf(li.dataset.status);
-    li.classList.toggle("done", stepIndex < currentIndex);
-    li.classList.toggle("current", stepIndex === currentIndex);
+    const isCurrentStep = stepIndex === currentIndex;
+    li.classList.toggle("done", stepIndex < currentIndex || (isCurrentStep && isTerminal));
+    li.classList.toggle("current", isCurrentStep && !isTerminal);
   }
 }
