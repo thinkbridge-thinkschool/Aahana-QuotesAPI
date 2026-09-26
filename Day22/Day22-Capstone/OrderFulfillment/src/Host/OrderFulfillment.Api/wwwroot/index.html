@@ -8,8 +8,14 @@
 </head>
 <body>
   <header>
+    <span class="badge">Demo UI · real backend</span>
     <h1>Order Fulfillment</h1>
-    <p class="subtitle">A modular monolith, placing a real order against whatever this process is currently wired to — local SQLite + in-process bus, or real Azure SQL + Service Bus, depending on how it's deployed.</p>
+    <p class="subtitle">
+      A modular monolith placing a real order against whatever this process is wired to right
+      now — local SQLite + in-process bus, or real Azure SQL + Service Bus, depending on how
+      it's deployed. This page is a thin demo shell; every stage below is the actual saga, not a
+      simulation.
+    </p>
   </header>
 
   <main>
@@ -19,8 +25,8 @@
         <label>
           SKU
           <select id="sku" name="sku">
-            <option value="WIDGET-1">WIDGET-1 (100 in stock)</option>
-            <option value="GADGET-9">GADGET-9 (5 in stock — try over-ordering this)</option>
+            <option value="WIDGET-1">📦 WIDGET-1 — 100 in stock</option>
+            <option value="GADGET-9">🔧 GADGET-9 — only 5 in stock (try over-ordering)</option>
           </select>
         </label>
         <label>
@@ -31,7 +37,10 @@
           Unit price (USD)
           <input id="unitPrice" name="unitPrice" type="number" min="0.01" step="0.01" value="9.99" required />
         </label>
-        <button type="submit" id="submit-btn">Place order</button>
+        <button type="submit" id="submit-btn">
+          <span class="btn-label">Place order</span>
+          <span class="spinner" hidden></span>
+        </button>
       </form>
       <p id="form-error" class="error" role="alert" hidden></p>
     </section>
@@ -39,19 +48,52 @@
     <section class="panel" id="saga-panel" hidden aria-labelledby="saga-heading">
       <h2 id="saga-heading">Order <code id="order-id"></code></h2>
       <ol id="saga-steps" class="saga">
-        <li data-status="Pending">Pending</li>
-        <li data-status="Confirmed">Confirmed<span class="hint">Inventory reserved stock</span></li>
-        <li data-status="PaymentReceived">PaymentReceived<span class="hint">Payment captured</span></li>
-        <li data-status="Shipped">Shipped<span class="hint">Dispatched</span></li>
+        <li data-status="Pending">
+          <span class="dot">1</span>
+          <span class="label">Pending</span>
+          <span class="hint">Order accepted, saved</span>
+        </li>
+        <li data-status="Confirmed">
+          <span class="dot">2</span>
+          <span class="label">Confirmed</span>
+          <span class="hint">Inventory reserved stock</span>
+        </li>
+        <li data-status="PaymentReceived">
+          <span class="dot">3</span>
+          <span class="label">PaymentReceived</span>
+          <span class="hint">Payment captured</span>
+        </li>
+        <li data-status="Shipped">
+          <span class="dot">4</span>
+          <span class="label">Shipped</span>
+          <span class="hint">Dispatched</span>
+        </li>
       </ol>
-      <p id="saga-cancelled" class="cancelled" hidden>Cancelled — the saga compensated instead of confirming (usually insufficient stock).</p>
+      <p id="saga-cancelled" class="cancelled" hidden>
+        ⚠ Cancelled — the saga compensated instead of confirming (usually insufficient stock).
+      </p>
       <p id="saga-note" class="hint"></p>
     </section>
 
     <section class="panel">
       <h2>Order history <span class="hint">(this browser tab, this session)</span></h2>
-      <ul id="history"></ul>
+      <ul id="history">
+        <li class="empty">No orders placed yet — try the form above.</li>
+      </ul>
     </section>
+
+    <details class="panel explainer">
+      <summary>How does this actually work?</summary>
+      <ol class="explain-steps">
+        <li><strong>POST</strong> creates the <code>Order</code> and writes an <code>OrderPlaced</code> event to an outbox row, in the same database transaction — the API responds <code>201</code> immediately, before anything downstream has run.</li>
+        <li>A background processor polls the outbox (every few seconds) and publishes that event onto the bus.</li>
+        <li><strong>Inventory</strong> reacts, reserves stock, and publishes either <code>StockReserved</code> or <code>StockReservationFailed</code>.</li>
+        <li><strong>Ordering</strong> reacts to that: <code>Confirmed</code> on success, or <code>Cancelled</code> (a compensating action, not an error) on failure.</li>
+        <li><strong>Payments</strong> reacts to <code>Confirmed</code>, captures a charge, and the order moves to <code>PaymentReceived</code>.</li>
+        <li><strong>Shipping</strong> reacts to that and dispatches — the order reaches <code>Shipped</code>, its final state.</li>
+      </ol>
+      <p class="hint">Every hop is async and independently retryable — that's the whole point of the outbox pattern: nothing is lost even if the process restarts mid-saga.</p>
+    </details>
   </main>
 
   <script src="app.js"></script>

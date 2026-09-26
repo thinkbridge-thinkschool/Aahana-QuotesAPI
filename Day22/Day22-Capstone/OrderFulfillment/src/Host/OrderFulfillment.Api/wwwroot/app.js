@@ -11,11 +11,15 @@ const sagaSteps = document.getElementById("saga-steps");
 const sagaCancelled = document.getElementById("saga-cancelled");
 const sagaNote = document.getElementById("saga-note");
 const historyList = document.getElementById("history");
+const btnLabel = submitBtn.querySelector(".btn-label");
+const spinner = submitBtn.querySelector(".spinner");
 
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
   formError.hidden = true;
   submitBtn.disabled = true;
+  btnLabel.textContent = "Placing…";
+  spinner.hidden = false;
 
   const sku = document.getElementById("sku").value;
   const quantity = Number(document.getElementById("quantity").value);
@@ -50,6 +54,8 @@ form.addEventListener("submit", async (event) => {
     formError.hidden = false;
   } finally {
     submitBtn.disabled = false;
+    btnLabel.textContent = "Place order";
+    spinner.hidden = true;
   }
 });
 
@@ -62,6 +68,7 @@ function trackOrder(orderId, summary) {
     li.classList.remove("done", "current");
   }
 
+  historyList.querySelector("li.empty")?.remove();
   const historyItem = document.createElement("li");
   historyItem.innerHTML = `<span>${summary}</span><span class="status">…</span>`;
   historyList.prepend(historyItem);
