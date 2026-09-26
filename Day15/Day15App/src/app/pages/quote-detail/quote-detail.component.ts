@@ -1,5 +1,5 @@
 import { Component, inject, signal } from '@angular/core';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import { QuoteService } from '../../services/quote.service';
 import { Quote } from '../../models/quote';
@@ -47,6 +47,38 @@ import { Quote } from '../../models/quote';
             <dt>Status</dt>
             <dd>{{ quote.isDeleted ? 'Deleted' : 'Active' }}</dd>
           </dl>
+
+          <div class="quote-detail__actions">
+            @if (!confirmingDelete()) {
+              <button
+                type="button"
+                class="btn btn-danger btn-sm"
+                (click)="confirmingDelete.set(true)"
+                [disabled]="deleting()"
+              >
+                Delete quote
+              </button>
+            } @else {
+              <span class="field-hint" style="margin: 0;">Delete this quote permanently?</span>
+              <button
+                type="button"
+                class="btn btn-danger btn-sm"
+                (click)="deleteQuote(quote.id)"
+                [disabled]="deleting()"
+                [attr.aria-busy]="deleting()"
+              >
+                {{ deleting() ? 'Deleting…' : 'Yes, delete' }}
+              </button>
+              <button
+                type="button"
+                class="btn-quiet"
+                (click)="confirmingDelete.set(false)"
+                [disabled]="deleting()"
+              >
+                Cancel
+              </button>
+            }
+          </div>
         </section>
       }
     </main>
@@ -54,11 +86,15 @@ import { Quote } from '../../models/quote';
 })
 export class QuoteDetailComponent {
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private readonly quoteService = inject(QuoteService);
 
   quote = signal<Quote | null>(null);
   loading = signal(true);
   error = signal('');
+
+  confirmingDelete = signal(false);
+  deleting = signal(false);
 
   constructor() {
     const idParam = this.route.snapshot.paramMap.get('id');
@@ -83,6 +119,22 @@ export class QuoteDetailComponent {
         } else {
           this.error.set('Failed to load quote.');
         }
+      }
+    });
+  }
+
+  deleteQuote(id: number): void {
+    this.deleting.set(true);
+    this.error.set('');
+
+    this.quoteService.deleteQuote(id).subscribe({
+      next: () => {
+        this.router.navigate(['/quotes']);
+      },
+      error: () => {
+        this.deleting.set(false);
+        this.confirmingDelete.set(false);
+        this.error.set('Failed to delete the quote. Please try again.');
       }
     });
   }
