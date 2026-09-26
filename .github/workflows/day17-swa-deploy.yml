@@ -44,8 +44,8 @@ jobs:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           action: "upload"
           app_location: "Day15/Day15App"
-          api_location: "Day17/api"
           output_location: "dist/Day15App/browser"
+          skip_api_build: true
 
   close_pull_request:
     if: github.event_name == 'pull_request' && github.event.action == 'closed'

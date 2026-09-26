@@ -1,5 +1,7 @@
 # Day15App
 
+thinkschool quotes — a dark, editorial-themed Angular frontend for QuotesApi.
+
 This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 21.2.20.
 
 ## Development server
