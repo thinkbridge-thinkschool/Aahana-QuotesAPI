@@ -1,5 +1,6 @@
 import { Component, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { AuthService } from '../../services/auth.service';
 import { QuoteService } from '../../services/quote.service';
 import { Quote } from '../../models/quote';
 
@@ -12,6 +13,7 @@ import { Quote } from '../../models/quote';
       <div class="page-header">
         <span class="page-header__eyebrow">Library</span>
         <h1>Quotes</h1>
+        <p>A shared collection of quotes worth remembering.</p>
       </div>
 
       <div aria-live="polite">
@@ -29,7 +31,13 @@ import { Quote } from '../../models/quote';
         }
 
         @if (!loading() && !error() && quotes().length === 0) {
-          <p class="empty-state">No quotes yet.</p>
+          <div class="empty-state">
+            <span class="empty-state__icon" aria-hidden="true">&ldquo;&rdquo;</span>
+            <p>No quotes yet.</p>
+            @if (authService.isAuthenticated()) {
+              <a routerLink="/quotes-new" class="btn btn-primary btn-sm">Add the first quote</a>
+            }
+          </div>
         }
       </div>
 
@@ -57,6 +65,7 @@ import { Quote } from '../../models/quote';
   `
 })
 export class QuotesComponent {
+  protected readonly authService = inject(AuthService);
   private readonly quoteService = inject(QuoteService);
 
   quotes = signal<Quote[]>([]);

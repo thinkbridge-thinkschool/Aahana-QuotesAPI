@@ -125,8 +125,8 @@ export class CreateQuoteComponent {
 
     this.quoteService
       .createQuote({
-        author: this.form.controls.author.value,
-        text: this.form.controls.text.value
+        author: this.form.controls.author.value.trim(),
+        text: this.form.controls.text.value.trim()
       })
       .subscribe({
         next: quote => {
