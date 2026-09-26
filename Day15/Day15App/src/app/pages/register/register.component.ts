@@ -43,15 +43,26 @@ interface RegisterResponse {
 
           <div class="field">
             <label for="password">Password</label>
-            <input
-              id="password"
-              name="password"
-              type="password"
-              autocomplete="new-password"
-              required
-              minlength="8"
-              [(ngModel)]="password"
-            />
+            <div class="field-with-action">
+              <input
+                id="password"
+                name="password"
+                [type]="showPassword() ? 'text' : 'password'"
+                autocomplete="new-password"
+                required
+                minlength="8"
+                [(ngModel)]="password"
+              />
+              <button
+                type="button"
+                class="field-action"
+                (click)="showPassword.set(!showPassword())"
+                [attr.aria-pressed]="showPassword()"
+                aria-label="Toggle password visibility"
+              >
+                {{ showPassword() ? 'Hide' : 'Show' }}
+              </button>
+            </div>
             <p class="field-hint">At least 8 characters.</p>
           </div>
 
@@ -85,9 +96,12 @@ export class RegisterComponent {
 
   loading = signal(false);
   errorMessage = signal('');
+  showPassword = signal(false);
 
   register(): void {
-    if (!this.email || !this.password) {
+    const email = this.email.trim();
+
+    if (!email || !this.password) {
       this.errorMessage.set('Enter both an email and a password.');
       return;
     }
@@ -102,7 +116,7 @@ export class RegisterComponent {
 
     this.http
       .post<RegisterResponse>(`${environment.apiBaseUrl}/api/auth/register`, {
-        email: this.email,
+        email,
         password: this.password
       })
       .subscribe({

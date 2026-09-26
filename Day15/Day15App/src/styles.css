@@ -33,6 +33,10 @@
   --space-8: 3rem;
 
   --shadow-sm: 0 1px 2px rgba(33, 28, 51, 0.06);
+  --shadow-md: 0 8px 24px rgba(33, 28, 51, 0.08);
+  --shadow-primary: 0 8px 20px rgba(109, 40, 217, 0.25);
+
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
 
   color-scheme: light;
 }
@@ -50,7 +54,9 @@ html {
 body {
   margin: 0;
   min-height: 100dvh;
-  background: var(--color-bg);
+  background:
+    radial-gradient(1200px 480px at 50% -160px, rgba(109, 40, 217, 0.08), transparent),
+    var(--color-bg);
   color: var(--color-text);
   font-family: var(--font-body);
   font-size: 1rem;
@@ -94,6 +100,18 @@ a:hover {
   max-width: 860px;
   margin: 0 auto;
   padding: var(--space-6) var(--space-5) var(--space-8);
+  animation: page-fade-in 0.25s var(--ease-standard);
+}
+
+@keyframes page-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 .page-header {
@@ -133,8 +151,13 @@ a:hover {
 /* Site header */
 
 .site-header {
-  background: var(--color-surface);
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   border-bottom: 1px solid var(--color-border);
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 
 .site-header__inner {
@@ -149,15 +172,19 @@ a:hover {
 }
 
 .brand {
+  display: inline-flex;
+  align-items: center;
   font-size: 1.125rem;
   font-weight: 700;
   color: var(--color-text);
   text-decoration: none;
   letter-spacing: -0.01em;
+  transition: opacity 0.15s var(--ease-standard);
 }
 
 .brand:hover {
   color: var(--color-text);
+  opacity: 0.8;
 }
 
 .brand__mark {
@@ -169,22 +196,24 @@ a:hover {
   display: flex;
   align-items: center;
   gap: var(--space-5);
+  flex-wrap: wrap;
 }
 
-.site-nav a {
+.site-nav a:not(.btn) {
   color: var(--color-text-muted);
   text-decoration: none;
   font-weight: 600;
   font-size: 0.9375rem;
   padding: var(--space-1) 0;
   border-bottom: 2px solid transparent;
+  transition: color 0.15s var(--ease-standard), border-color 0.15s var(--ease-standard);
 }
 
-.site-nav a:hover {
+.site-nav a:not(.btn):hover {
   color: var(--color-text);
 }
 
-.site-nav a.is-active {
+.site-nav a.is-active:not(.btn) {
   color: var(--color-primary);
   border-bottom-color: var(--color-primary);
 }
@@ -205,20 +234,35 @@ a:hover {
   cursor: pointer;
   text-decoration: none;
   line-height: 1;
+  transition: background-color 0.15s var(--ease-standard),
+    transform 0.15s var(--ease-standard),
+    box-shadow 0.15s var(--ease-standard);
+}
+
+.btn-sm {
+  padding: var(--space-2) var(--space-4);
+  font-size: 0.875rem;
 }
 
 .btn-primary {
   background: var(--color-primary);
   color: var(--color-primary-contrast);
+  box-shadow: var(--shadow-primary);
 }
 
 .btn-primary:hover:not(:disabled) {
   background: var(--color-primary-hover);
+  transform: translateY(-1px);
+}
+
+.btn-primary:active:not(:disabled) {
+  transform: translateY(0);
 }
 
 .btn-primary:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+  box-shadow: none;
 }
 
 .btn-quiet {
@@ -228,10 +272,42 @@ a:hover {
   font-size: 0.9375rem;
   border: none;
   padding: var(--space-1) 0;
+  transition: color 0.15s var(--ease-standard);
 }
 
 .btn-quiet:hover {
   color: var(--color-text);
+}
+
+/* Field with inline action (e.g. show/hide password) */
+
+.field-with-action {
+  position: relative;
+  display: flex;
+}
+
+.field-with-action input {
+  padding-right: 4rem;
+}
+
+.field-action {
+  position: absolute;
+  top: 50%;
+  right: var(--space-2);
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  color: var(--color-primary);
+  font-weight: 600;
+  font-size: 0.8125rem;
+  padding: var(--space-1) var(--space-2);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+}
+
+.field-action:hover {
+  color: var(--color-primary-hover);
+  background: var(--color-surface-alt);
 }
 
 /* Forms */
@@ -278,6 +354,7 @@ a:hover {
   border-radius: var(--radius-md);
   padding: var(--space-5);
   box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.2s var(--ease-standard), transform 0.2s var(--ease-standard);
 }
 
 .card + .card {
@@ -286,14 +363,34 @@ a:hover {
 
 .quote-grid {
   display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: var(--space-4);
   margin-top: var(--space-5);
+}
+
+.quote-grid .card {
+  margin-top: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.quote-grid .card > article {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+}
+
+.quote-grid .card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+  border-color: var(--color-primary);
 }
 
 .quote-card__text {
   font-size: 1.0625rem;
   color: var(--color-text);
   margin-bottom: var(--space-3);
+  flex-grow: 1;
 }
 
 .quote-card__author {
@@ -348,8 +445,18 @@ a:hover {
 
 .empty-state {
   color: var(--color-text-muted);
-  padding: var(--space-6) 0;
+  padding: var(--space-8) var(--space-5);
   text-align: center;
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-md);
+  margin-top: var(--space-5);
+}
+
+.empty-state__icon {
+  font-size: 1.75rem;
+  display: block;
+  margin-bottom: var(--space-2);
+  color: var(--color-primary);
 }
 
 .spinner {
@@ -387,5 +494,14 @@ button:focus-visible {
 @media (prefers-reduced-motion: reduce) {
   .spinner {
     animation-duration: 1.4s;
+  }
+
+  .page,
+  .card,
+  .btn,
+  .brand,
+  .site-nav a {
+    animation: none !important;
+    transition: none !important;
   }
 }

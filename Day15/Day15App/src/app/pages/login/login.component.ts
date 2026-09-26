@@ -43,14 +43,25 @@ interface LoginResponse {
 
           <div class="field">
             <label for="password">Password</label>
-            <input
-              id="password"
-              name="password"
-              type="password"
-              autocomplete="current-password"
-              required
-              [(ngModel)]="password"
-            />
+            <div class="field-with-action">
+              <input
+                id="password"
+                name="password"
+                [type]="showPassword() ? 'text' : 'password'"
+                autocomplete="current-password"
+                required
+                [(ngModel)]="password"
+              />
+              <button
+                type="button"
+                class="field-action"
+                (click)="showPassword.set(!showPassword())"
+                [attr.aria-pressed]="showPassword()"
+                aria-label="Toggle password visibility"
+              >
+                {{ showPassword() ? 'Hide' : 'Show' }}
+              </button>
+            </div>
           </div>
 
           <button
@@ -64,10 +75,6 @@ interface LoginResponse {
             }
             {{ loading() ? 'Signing in…' : 'Log in' }}
           </button>
-
-          <p class="field-hint">
-            Demo credentials: demo&#64;thinkschool.local / ThinkSchool2026
-          </p>
 
           <p class="field-hint">
             Don't have an account? <a routerLink="/register">Sign up</a>
@@ -87,9 +94,12 @@ export class LoginComponent {
 
   loading = signal(false);
   errorMessage = signal('');
+  showPassword = signal(false);
 
   login(): void {
-    if (!this.email || !this.password) {
+    const email = this.email.trim();
+
+    if (!email || !this.password) {
       this.errorMessage.set('Enter both an email and a password.');
       return;
     }
@@ -99,7 +109,7 @@ export class LoginComponent {
 
     this.http
       .post<LoginResponse>(`${environment.apiBaseUrl}/api/auth/login`, {
-        email: this.email,
+        email,
         password: this.password
       })
       .subscribe({

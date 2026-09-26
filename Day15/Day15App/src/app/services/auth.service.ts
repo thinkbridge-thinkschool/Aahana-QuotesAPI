@@ -25,6 +25,10 @@ export class AuthService {
     this._isAuthenticated.set(false);
   }
 
+  getAccessToken(): string | null {
+    return localStorage.getItem(ACCESS_TOKEN_KEY);
+  }
+
   private hasToken(): boolean {
     return !!localStorage.getItem(ACCESS_TOKEN_KEY);
   }
